@@ -46,16 +46,18 @@ function GhostMesh() {
         rotationIntensity={0.6} // XYZ rotation intensity
         floatIntensity={1.5} // Up/down float intensity
       >
+        {/* Chromatic offsets: neon pink and electric teal ghosts behind the ink wireframe */}
+        <mesh position={[-0.06, 0.04, -0.1]}>
+          <capsuleGeometry args={[0.8, 1.2, 8, 20]} />
+          <meshBasicMaterial color="#ff00ff" wireframe transparent opacity={0.55} />
+        </mesh>
+        <mesh position={[0.06, -0.04, -0.1]}>
+          <capsuleGeometry args={[0.8, 1.2, 8, 20]} />
+          <meshBasicMaterial color="#00ffff" wireframe transparent opacity={0.7} />
+        </mesh>
         <mesh>
-          <capsuleGeometry args={[0.8, 1.2, 32, 32]} />
-          <meshStandardMaterial 
-            color="#111111"
-            emissive="#39ff14"
-            emissiveIntensity={1.2}
-            roughness={0.4}
-            metalness={0.9}
-            wireframe={true} // Adding wireframe to make it look a bit more "underground/tech"
-          />
+          <capsuleGeometry args={[0.8, 1.2, 8, 20]} />
+          <meshBasicMaterial color="#0a0a0a" wireframe />
         </mesh>
       </Float>
     </group>
@@ -64,13 +66,12 @@ function GhostMesh() {
 
 export default function GhostHero() {
   return (
-    <div className="absolute inset-0 z-0 w-full h-full bg-transparent">
+    // pan-y keeps vertical swipes scrolling the page on phones; horizontal drags still steer the ghost
+    <div className="absolute inset-0 z-0 w-full h-full bg-transparent touch-pan-y">
       <Canvas
         camera={{ position: [0, 0, 8], fov: 45 }}
         className="w-full h-full"
       >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 10]} intensity={1} />
         <GhostMesh />
       </Canvas>
     </div>

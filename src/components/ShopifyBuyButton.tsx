@@ -44,27 +44,82 @@ export default function ShopifyBuyButton({ productId }: { productId: string }) {
                   },
                   title: {
                     'font-family': 'var(--font-sans), sans-serif',
-                    'color': '#ffffff',
+                    'font-weight': '900',
+                    'text-transform': 'uppercase',
+                    'letter-spacing': '0.1em',
+                    'color': '#0a0a0a',
                   },
                   price: {
                     'font-family': 'var(--font-mono), monospace',
-                    'color': '#39ff14', // Neon Green
+                    'color': '#0a0a0a',
+                  },
+                  compareAt: {
+                    'font-family': 'var(--font-mono), monospace',
+                    'color': '#ff00ff', // Glowing pink
                   },
                   button: {
                     'font-family': 'var(--font-mono), monospace',
                     'font-weight': 'bold',
-                    'background-color': '#111111',
-                    'color': '#39ff14', // Neon Green
-                    'border': '1px solid #39ff14',
+                    'text-transform': 'uppercase',
+                    'letter-spacing': '0.1em',
+                    'background-color': '#0a0a0a',
+                    'color': '#ffffff',
+                    'border': '2px solid #0a0a0a',
                     'border-radius': '0px',
+                    'padding': '16px 24px', // Thumb-sized tap target
                     ':hover': {
+                      'background-color': '#39ff14', // Toxic green
+                      'color': '#0a0a0a',
+                    },
+                    ':focus': {
                       'background-color': '#39ff14',
-                      'color': '#111111',
+                      'color': '#0a0a0a',
                     },
                   },
                 },
                 text: {
                   button: 'Add to Cart',
+                },
+              },
+              cart: {
+                styles: {
+                  button: {
+                    'font-family': 'var(--font-mono), monospace',
+                    'font-weight': 'bold',
+                    'text-transform': 'uppercase',
+                    'background-color': '#0a0a0a',
+                    'color': '#ffffff',
+                    'border-radius': '0px',
+                    ':hover': {
+                      'background-color': '#39ff14',
+                      'color': '#0a0a0a',
+                    },
+                    ':focus': {
+                      'background-color': '#39ff14',
+                      'color': '#0a0a0a',
+                    },
+                  },
+                },
+              },
+              toggle: {
+                styles: {
+                  toggle: {
+                    'font-family': 'var(--font-mono), monospace',
+                    'background-color': '#0a0a0a',
+                    'border-radius': '0px',
+                    ':hover': {
+                      'background-color': '#ff00ff', // Glowing pink
+                    },
+                    ':focus': {
+                      'background-color': '#ff00ff',
+                    },
+                  },
+                  count: {
+                    'color': '#39ff14',
+                  },
+                  iconPath: {
+                    'fill': '#ffffff',
+                  },
                 },
               },
             },

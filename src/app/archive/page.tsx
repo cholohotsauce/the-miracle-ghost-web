@@ -14,16 +14,16 @@ export default function ArchivePage() {
   ];
 
   return (
-    <main className="w-full min-h-screen bg-background text-foreground pt-32 px-6 lg:px-12 pb-24">
-      <h1 className="text-4xl font-bold tracking-widest uppercase mb-12">Archive / Gallery</h1>
-      
-      <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-24 md:pt-32 px-5 md:px-6 lg:px-12 pb-mobile-nav">
+      <h1 className="text-3xl md:text-4xl font-black tracking-widest uppercase mb-8 md:mb-12">Archive / Gallery</h1>
+
+      <div className="columns-1 sm:columns-2 md:columns-3 gap-6 space-y-6 touch-pan-y">
         {archiveItems.map((item) => (
-          <div 
+          <div
             key={item.id}
-            className={`w-full bg-[#1a1a1a] ${item.height} rounded-none border border-zinc-800 hover:border-[var(--color-neon-pink)] transition-colors duration-300 flex items-center justify-center break-inside-avoid`}
+            className={`w-full bg-muted ${item.height} rounded-none border-2 border-line hover:shadow-[8px_8px_0_var(--color-neon-pink)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center break-inside-avoid`}
           >
-            <span className="text-zinc-600 font-mono tracking-widest uppercase text-sm">
+            <span className="text-foreground/50 font-mono tracking-widest uppercase text-sm">
               Artwork_{item.id}
             </span>
           </div>
