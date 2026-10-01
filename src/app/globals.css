@@ -1,14 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #111111;
-  --foreground: #ffffff;
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --muted: #f3f3f3;
+  --line: #0a0a0a;
+
+  /* Height of the phone bottom nav, excluding the iOS home-indicator inset */
+  --mobile-nav-h: 4rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  /* Accents: use as fills, borders, and glows. They fail contrast as text on white. */
   --color-neon-green: #39ff14; /* Toxic green */
   --color-neon-pink: #ff00ff;  /* Glowing pink */
   --color-neon-teal: #00ffff;  /* Electric teal */
@@ -17,8 +25,28 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  touch-action: manipulation;
+}
+
+::selection {
+  background: var(--color-neon-green);
+  color: var(--foreground);
+}
+
+/* Bottom padding that clears the phone bottom nav and the iOS home indicator */
+@utility pb-mobile-nav {
+  padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 2rem);
+
+  @media (width >= 48rem) {
+    padding-bottom: 6rem;
+  }
 }
