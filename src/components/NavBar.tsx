@@ -22,7 +22,7 @@ export default function NavBar() {
   return (
     <>
       {/* Top bar: brand on all sizes, full link list on desktop */}
-      <header className="fixed top-0 left-0 w-full z-50 px-5 py-4 md:p-6 pt-[max(1rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-md md:bg-transparent md:backdrop-blur-none">
+      <header className="fixed top-0 left-0 w-full z-50 px-5 py-4 md:p-6 pt-[max(1rem,env(safe-area-inset-top))] bg-background/80 backdrop-blur-md">
         <nav className="flex items-center justify-between" aria-label="Main">
           <div className="font-black text-base md:text-xl uppercase tracking-widest text-foreground">
             <Link href="/">The Miracle Ghost</Link>
