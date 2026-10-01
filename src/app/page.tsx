@@ -1,21 +1,27 @@
-import React from "react";
+import Link from "next/link";
 import GhostHero from "@/components/GhostHero";
+import WorksGallery from "@/components/WorksGallery";
+import { works } from "@/content/works";
 
 export default function Home() {
   return (
-    <main className="w-full h-[100dvh] relative bg-background text-foreground overflow-hidden overscroll-none">
-      {/* 3D Ghost background layer */}
+    <main className="w-full bg-background text-foreground">
       <GhostHero />
 
-      {/* Overlay content (if any, like title) */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] md:pb-0 text-center pointer-events-none z-10">
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-widest uppercase leading-none mb-6">
-          The Miracle Ghost
-        </h1>
-        <p className="text-sm md:text-xl tracking-widest font-mono uppercase bg-[var(--color-neon-green)] text-foreground px-3 py-1">
-          Interactive Art & Apparel
-        </p>
-      </div>
+      <section aria-labelledby="selected-works" className="px-4 md:px-6 lg:px-12 pt-16 md:pt-24 pb-mobile-nav">
+        <div className="mb-8 md:mb-12 flex items-end justify-between gap-4 border-b-2 border-line pb-4">
+          <h2 id="selected-works" className="text-2xl md:text-4xl font-black uppercase tracking-widest leading-none">
+            Selected Works
+          </h2>
+          <Link
+            href="/archive"
+            className="font-mono text-xs uppercase tracking-[0.2em] underline-offset-8 hover:underline decoration-[var(--color-neon-pink)] decoration-2"
+          >
+            Archive ({String(works.length).padStart(2, "0")}) →
+          </Link>
+        </div>
+        <WorksGallery works={works} layout="strip" />
+      </section>
     </main>
   );
 }
