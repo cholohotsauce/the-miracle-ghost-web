@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import { DRIP_TIPS, GhostRig, HALO_SIZE } from "./ghostRig";
+import { GhostRig, HALO_SIZE } from "./ghostRig";
 import { FACE_MAP_URL, HALO_MAP_URL, MODEL_URL } from "./modelBake";
 import type { GhostControls } from "./types";
 
@@ -29,7 +29,7 @@ function toModelSpace(mesh: THREE.Mesh) {
   return geometry;
 }
 
-/** Rommel's sculpted ghost, driven by the same GhostControls as the rest of the stage. */
+/** Aes's sculpted ghost, driven by the same GhostControls as the rest of the stage. */
 export default function MiracleGhost({ controls, onPoke }: { controls: GhostControls; onPoke: () => void }) {
   const gltf = useGLTF(MODEL_URL, false, true);
   // Both maps are data, not color, so keep them out of sRGB decoding
@@ -47,8 +47,7 @@ export default function MiracleGhost({ controls, onPoke }: { controls: GhostCont
   }, [gltf]);
 
   const [rig] = useState(() => new GhostRig(controls.current, faceMap, haloMap));
-  const squashGroup = useRef<THREE.Group>(null);
-  const drops = useRef<(THREE.Mesh | null)[]>([]);
+  const trickGroup = useRef<THREE.Group>(null);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(
@@ -60,7 +59,7 @@ export default function MiracleGhost({ controls, onPoke }: { controls: GhostCont
   );
 
   useFrame((state, dt) => {
-    rig.update(controls.current, state.clock.elapsedTime, dt, squashGroup.current, drops.current);
+    rig.update(controls.current, state.clock.elapsedTime, dt, trickGroup.current);
   });
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
@@ -69,7 +68,7 @@ export default function MiracleGhost({ controls, onPoke }: { controls: GhostCont
   };
 
   return (
-    <group ref={squashGroup}>
+    <group ref={trickGroup}>
       <mesh position={[0, HALO_SIZE.centerY, -0.9]} material={rig.halo.material} renderOrder={-1}>
         <planeGeometry args={[HALO_SIZE.width, HALO_SIZE.height]} />
       </mesh>
@@ -80,17 +79,6 @@ export default function MiracleGhost({ controls, onPoke }: { controls: GhostCont
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "")}
       />
-      {DRIP_TIPS.map((_, i) => (
-        <mesh
-          key={i}
-          ref={(m) => {
-            drops.current[i] = m;
-          }}
-          geometry={rig.dropGeometry}
-          material={rig.drop.material}
-          visible={false}
-        />
-      ))}
     </group>
   );
 }

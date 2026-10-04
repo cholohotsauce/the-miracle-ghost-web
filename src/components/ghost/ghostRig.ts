@@ -1,12 +1,8 @@
 import * as THREE from "three";
 import { createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
-import { HALO_RECT, MODEL_DRIP_TIPS } from "./modelBake";
+import { HALO_RECT } from "./modelBake";
+import { blendPose, poseAt, REST, TRICK_DURATION, type Pose, type TrickName } from "./tricks";
 import type { GhostState } from "./types";
-
-const DROP_PERIOD = 3.4;
-
-// Droplets fall from the three middle drips of the hem; the wing tips stay dry
-export const DRIP_TIPS = MODEL_DRIP_TIPS.filter(([x]) => Math.abs(x) < 0.8);
 
 export const HALO_SIZE = {
   width: HALO_RECT.maxX - HALO_RECT.minX,
@@ -14,76 +10,71 @@ export const HALO_SIZE = {
   centerY: (HALO_RECT.maxY + HALO_RECT.minY) / 2,
 };
 
-/** A falling droplet: a lathe teardrop with its point up. */
-function buildDropletGeometry(): THREE.BufferGeometry {
-  const points: THREE.Vector2[] = [];
-  const steps = 24;
-  for (let k = 0; k <= steps; k++) {
-    const t = (k / steps) * Math.PI;
-    const x = Math.sin(t) * Math.pow(Math.sin(t / 2), 1.6) * 0.6;
-    const y = Math.cos(t);
-    points.push(new THREE.Vector2(Math.max(x, 1e-4), y));
-  }
-  // Lathe expects the profile from bottom to top
-  const geometry = new THREE.LatheGeometry(points.reverse(), 24);
-  geometry.computeVertexNormals();
-  return geometry;
-}
+/** The neon trick cycles through the brand accents */
+const NEON = ["#39ff14", "#ff00ff", "#00ffff"].map((hex) => hexToVec3(hex));
+const NEON_STEP = 0.9;
 
-/** Owns the ghost's materials and droplets and advances its animation each frame. The loaded textures belong to the GLTF cache. */
+/** After entry the ghost drops a little and shrinks, making room for the menu */
+const ENTERED = { y: -0.3, scale: 0.92 };
+
+/** How long a new trick takes to blend in from wherever the last one left off */
+const BLEND_IN = 0.18;
+
+/** Owns the ghost's materials and plays its tricks each frame. The loaded textures belong to the GLTF cache. */
 export class GhostRig {
-  readonly dropGeometry = buildDropletGeometry();
   readonly body: ReturnType<typeof createGhostMaterial>;
-  readonly drop = createGhostMaterial(null);
   readonly halo: ReturnType<typeof createHaloMaterial>;
 
-  private color = new THREE.Vector3(1, 1, 1);
-  private target = new THREE.Vector3();
-  private squash = { x: 0, v: 0 };
+  private trick: { name: TrickName | null; seq: number; start: number } = { name: null, seq: 0, start: 0 };
+  private from: Pose = { ...REST };
+  private target: Pose = { ...REST };
+  private pose: Pose = { ...REST };
+  private enter = 0;
   private blink = { next: 2.5, t: -1 };
-  private pulse = 0;
-  private lastPoke = 0;
+  private glowColor = new THREE.Vector3();
 
   constructor(initial: GhostState, faceMap: THREE.Texture, haloMap: THREE.Texture) {
     this.body = createGhostMaterial(faceMap);
     this.halo = createHaloMaterial(haloMap);
-    hexToVec3(initial.color, this.color);
-    this.lastPoke = initial.pokes;
+    this.trick.seq = initial.trick.seq;
+    this.enter = initial.entered ? 1 : 0;
   }
 
-  update(c: GhostState, t: number, dt: number, squashGroup: THREE.Object3D | null, drops: (THREE.Mesh | null)[]) {
+  update(c: GhostState, t: number, dt: number, group: THREE.Object3D | null) {
     const step = Math.min(dt, 1 / 20);
-    const { body, drop, halo } = this;
+    const { body, halo } = this;
 
-    // Wake ramps up over about a second and a half; sleeping fades faster
-    const wake = body.uniforms.uWake.value;
-    const wakeNext = wake + ((c.awake ? 1 : 0) - wake) * (1 - Math.exp(-step * (c.awake ? 2.2 : 4)));
-
-    hexToVec3(c.color, this.target);
-    this.color.lerp(this.target, 1 - Math.exp(-step * 5));
-
-    // A poke squashes the ghost on a spring and sends a pulse of light through it
-    if (c.pokes !== this.lastPoke) {
-      this.lastPoke = c.pokes;
-      this.squash.v += 7;
-      this.pulse = 1;
+    // A new trick, or a null one that ends the current trick, starts from the current pose so nothing snaps.
+    // A trick that runs out lands on REST; spins and flips end a full turn round, which looks the same.
+    if (c.trick.seq !== this.trick.seq) {
+      this.from = { ...this.pose };
+      this.trick = { name: c.trick.name, seq: c.trick.seq, start: t };
     }
-    const s = this.squash;
-    s.v += (-s.x * 160 - s.v * 9) * step;
-    s.x += s.v * step;
-    this.pulse *= Math.exp(-step * 3);
-    squashGroup?.scale.set(1 + s.x * 0.08, 1 - s.x * 0.1, 1 + s.x * 0.05);
+    const u = t - this.trick.start;
+    const name = this.trick.name;
+    if (name && u < TRICK_DURATION[name]) poseAt(name, u, c.reducedMotion, this.target);
+    else Object.assign(this.target, REST);
+    const k = THREE.MathUtils.smoothstep(u / BLEND_IN, 0, 1);
+    const p = blendPose(this.from, this.target, k, this.pose);
 
-    // Blink every few seconds while awake
+    this.enter += ((c.entered ? 1 : 0) - this.enter) * (1 - Math.exp(-step * 3));
+    if (group) {
+      const s = 1 + (ENTERED.scale - 1) * this.enter;
+      group.position.set(p.x, p.y + ENTERED.y * this.enter, 0);
+      group.rotation.set(p.rx, p.ry, p.rz);
+      group.scale.set(p.sx * s, p.sy * s, p.sz * s);
+    }
+
+    // Blink every few seconds
     const b = this.blink;
     let blinkScale = 1;
-    if (c.awake && !c.reducedMotion) {
+    if (!c.reducedMotion) {
       if (b.t < 0 && t > b.next) b.t = 0;
       if (b.t >= 0) {
         b.t += step;
-        const k = b.t / 0.16;
-        blinkScale = k < 1 ? Math.max(0.08, Math.abs(1 - k * 2)) : 1;
-        if (k >= 1) {
+        const bk = b.t / 0.16;
+        blinkScale = bk < 1 ? Math.max(0.08, Math.abs(1 - bk * 2)) : 1;
+        if (bk >= 1) {
           b.t = -1;
           b.next = t + 2.2 + Math.random() * 3.5;
         }
@@ -93,47 +84,31 @@ export class GhostRig {
     // The face turns toward the cursor or tilt
     const look = body.uniforms.uLook.value;
     const lookK = 1 - Math.exp(-step * 6);
-    look.x += (c.tilt.x * 0.07 - look.x) * lookK;
+    look.x += (c.tilt.x * 0.07 + p.lookX - look.x) * lookK;
     look.y += (c.tilt.y * 0.05 - look.y) * lookK;
 
-    const motion = c.reducedMotion ? 0 : 1;
-    for (const u of [body.uniforms, drop.uniforms]) {
-      u.uTime.value = t;
-      u.uMotion.value = motion;
-      u.uWake.value = wakeNext;
-      u.uPulse.value = this.pulse;
-      u.uColor.value.copy(this.color);
-    }
-    body.uniforms.uBlink.value = blinkScale;
-    halo.uniforms.uColor.value.copy(this.color);
-    halo.uniforms.uStrength.value = wakeNext * (0.85 + this.pulse * 0.6);
+    // Neon glides from accent to accent
+    const cycle = p.glowT / NEON_STEP;
+    const i = Math.floor(cycle);
+    this.glowColor
+      .copy(NEON[i % NEON.length])
+      .lerp(NEON[(i + 1) % NEON.length], THREE.MathUtils.smoothstep(cycle - i, 0.6, 1));
 
-    // Droplets bead at the drip tips, then let go and fall
-    DRIP_TIPS.forEach(([x, y], i) => {
-      const mesh = drops[i];
-      if (!mesh) return;
-      const phase = ((t + i * 1.7) / DROP_PERIOD) % 1;
-      let scale: number;
-      let dy: number;
-      if (phase < 0.45) {
-        scale = THREE.MathUtils.smoothstep(phase / 0.45, 0, 1);
-        dy = -0.03 * scale;
-      } else {
-        const fall = (phase - 0.45) * DROP_PERIOD;
-        scale = 1 - THREE.MathUtils.smoothstep(fall, 0.55, 0.95);
-        dy = -0.09 - 1.6 * fall * fall;
-      }
-      const visible = wakeNext > 0.5 && motion > 0 ? scale : 0;
-      mesh.visible = visible > 0.001;
-      mesh.position.set(x, y - 0.06 + dy, 0);
-      mesh.scale.set(0.075 * visible, 0.11 * visible * (phase < 0.45 ? 1 : 1.15), 0.075 * visible);
-    });
+    const uni = body.uniforms;
+    uni.uTime.value = t;
+    uni.uMotion.value = c.reducedMotion ? 0 : 1;
+    uni.uGrin.value = p.grin;
+    uni.uFrown.value = p.frown;
+    uni.uLid.value = p.lid;
+    uni.uBlink.value = Math.max(blinkScale * (1 - p.lid * 0.3), 0.08);
+    uni.uGlow.value = p.glow;
+    uni.uGlowColor.value.copy(this.glowColor);
+    halo.uniforms.uColor.value.copy(this.glowColor);
+    halo.uniforms.uStrength.value = p.glow * 0.75;
   }
 
   dispose() {
-    this.dropGeometry.dispose();
     this.body.material.dispose();
-    this.drop.material.dispose();
     this.halo.material.dispose();
   }
 }

@@ -7,7 +7,7 @@ import catOnTheCliff from "./archive/cat-on-the-cliff.jpg";
 
 export type Work = {
   slug: string;
-  /** Working titles until Rommel supplies the real titles, years, and media */
+  /** Working titles until Aes supplies the real titles, years, and media */
   title: string;
   image: StaticImageData;
   alt: string;

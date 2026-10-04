@@ -5,9 +5,6 @@
   --foreground: #0a0a0a;
   --muted: #f3f3f3;
   --line: #0a0a0a;
-
-  /* Height of the phone bottom nav, excluding the iOS home-indicator inset */
-  --mobile-nav-h: 4rem;
 }
 
 @theme inline {
@@ -23,6 +20,7 @@
 
   --font-sans: var(--font-geist-sans), "Inter", "Roboto", "Outfit", Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
+  --font-drip: var(--font-rubik-wet-paint), "Impact", sans-serif;
 }
 
 html {
@@ -42,9 +40,9 @@ body {
   color: var(--foreground);
 }
 
-/* Bottom padding that clears the phone bottom nav and the iOS home indicator */
-@utility pb-mobile-nav {
-  padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 2rem);
+/* Bottom padding for content pages that clears the iOS home indicator */
+@utility pb-page {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 3rem);
 
   @media (width >= 48rem) {
     padding-bottom: 6rem;
