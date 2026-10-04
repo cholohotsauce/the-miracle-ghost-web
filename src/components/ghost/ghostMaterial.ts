@@ -1,16 +1,17 @@
 import * as THREE from "three";
+import { EYES, FACE_RECT } from "./modelBake";
 
 /**
- * The airbrushed-glow look of Rommel's panels, as a shader:
+ * The airbrushed-glow look of Rommel's panels, as a shader on his sculpted ghost:
  * - asleep: a near-black body whose lobe tops catch a little light, with only the face glowing
  * - awake: a bright rim, a deeper core, a soft heart-light, faint colored veins, and spray-paint grain
+ * The face is his own polypainted linework, projected from the front (see modelBake.ts).
  * Colors are passed as sRGB triples and written out as-is.
  */
 
 const vertexShader = /* glsl */ `
-  attribute vec2 aShape;
-  attribute float aDepth;
-  attribute float aFront;
+  // Distance in from the silhouette's edge, baked per vertex
+  attribute float _depth;
 
   uniform float uTime;
   uniform float uMotion;
@@ -33,9 +34,10 @@ const vertexShader = /* glsl */ `
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     vViewPos = mv.xyz;
     vNormal = normalize(normalMatrix * normal);
-    vShape = aShape;
-    vDepth = aDepth;
-    vFront = aFront;
+    vShape = position.xy;
+    vDepth = _depth;
+    // The front shell, where the face is painted
+    vFront = step(0.0, position.z) * smoothstep(0.05, 0.35, normal.z);
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -48,6 +50,10 @@ const fragmentShader = /* glsl */ `
   uniform float uPulse;
   uniform vec2 uLook;
   uniform vec3 uColor;
+  uniform sampler2D uFaceMap;
+  uniform vec4 uFaceRect;
+  uniform vec4 uEyeL;
+  uniform vec4 uEyeR;
 
   varying vec3 vNormal;
   varying vec3 vViewPos;
@@ -84,20 +90,20 @@ const fragmentShader = /* glsl */ `
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
   }
 
-  float sdSegment(vec2 p, vec2 a, vec2 b) {
-    vec2 pa = p - a;
-    vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return length(pa - ba * h);
+  vec2 faceUv(vec2 p) {
+    return (p - uFaceRect.xy) / uFaceRect.zw;
   }
 
-  // Lower arc of a circle, spanning +-halfAngle around straight down
-  float sdSmile(vec2 p, vec2 c, float r, float halfAngle) {
-    vec2 q = p - c;
-    float a = atan(q.x, -q.y);
-    if (abs(a) < halfAngle) return abs(length(q) - r);
-    vec2 e = c + r * vec2(sin(halfAngle) * sign(q.x), -cos(halfAngle));
-    return length(p - e);
+  // Ink of one painted eye, squashed toward its center while blinking. bias > 0 reads a blurrier mip for glow.
+  float eyeInk(vec2 f, vec4 eye, float bias) {
+    vec2 q = f - eye.xy;
+    if (abs(q.x) > eye.z * 4.0) return 0.0;
+    return texture2D(uFaceMap, faceUv(eye.xy + vec2(q.x, q.y / uBlink)), bias).r;
+  }
+
+  float faceInk(vec2 f, float bias) {
+    float mouth = texture2D(uFaceMap, faceUv(f), bias).g;
+    return max(mouth, max(eyeInk(f, uEyeL, bias), eyeInk(f, uEyeR, bias)));
   }
 
   void main() {
@@ -119,8 +125,8 @@ const fragmentShader = /* glsl */ `
     vec3 lit = deep + uColor * (rim * 1.1 + edge * 0.45 + top * 0.35 + (1.0 - core) * 0.3);
     lit += uColor * 0.5 * uPulse;
 
-    // Heart-light at the chest
-    float heart = exp(-length(vShape - vec2(0.0, -0.05)) * 5.5) * vFront * uFace;
+    // Heart-light at the chest, below the smile
+    float heart = exp(-length(vShape - vec2(0.0, -0.42)) * 5.5) * vFront * uFace;
     lit += mix(uColor, vec3(1.0), 0.6) * heart * 0.9;
 
     // Short veins drifting inside, warm and cool like the luminous panel
@@ -134,21 +140,14 @@ const fragmentShader = /* glsl */ `
     vec3 color = mix(asleep, lit, uWake);
     color += grain * mix(0.015, 0.05, uWake);
 
-    // Face: two long vertical eyes and a smile that glow even while the ghost sleeps
-    if (uFace > 0.5 && vFront > 0.5) {
+    // Face: Rommel's painted eyes and smile, glowing even while the ghost sleeps
+    if (uFace > 0.5 && vFront > 0.01) {
       vec2 f = vShape - uLook;
-      float eyeHalf = 0.21 * uBlink;
-      float eyeL = sdSegment(f, vec2(-0.16, 0.86 - eyeHalf), vec2(-0.16, 0.86 + eyeHalf));
-      float eyeR = sdSegment(f, vec2(0.16, 0.86 - eyeHalf), vec2(0.16, 0.86 + eyeHalf));
-      float smile = sdSmile(f, vec2(0.0, 0.78), 0.24, 0.95);
-      float d = min(min(eyeL, eyeR), smile);
-      float w = 0.016;
-      float aa = fwidth(d);
-      float line = 1.0 - smoothstep(w - aa, w + aa, d);
-      float halo = exp(-d * 22.0);
+      float line = faceInk(f, 0.0) * vFront;
+      float halo = faceInk(f, 4.0) * vFront;
       vec3 faceColor = vec3(1.0);
       color = mix(color, faceColor, line * mix(0.85, 1.0, uWake));
-      color += faceColor * halo * mix(0.18, 0.45, uWake) * (1.0 - line);
+      color += faceColor * halo * mix(0.35, 0.8, uWake) * (1.0 - line);
     }
 
     gl_FragColor = vec4(color, 1.0);
@@ -164,18 +163,35 @@ export type GhostUniforms = {
   uPulse: { value: number };
   uLook: { value: THREE.Vector2 };
   uColor: { value: THREE.Vector3 };
+  uFaceMap: { value: THREE.Texture | null };
+  uFaceRect: { value: THREE.Vector4 };
+  uEyeL: { value: THREE.Vector4 };
+  uEyeR: { value: THREE.Vector4 };
 };
 
-export function createGhostMaterial(withFace: boolean) {
+/** Without a face map the material draws a plain body, as the droplets use. */
+export function createGhostMaterial(faceMap: THREE.Texture | null) {
+  const eye = (i: number) => new THREE.Vector4(EYES[i].cx, EYES[i].cy, EYES[i].halfW, EYES[i].halfH);
   const uniforms: GhostUniforms = {
     uTime: { value: 0 },
     uMotion: { value: 1 },
     uWake: { value: 0 },
-    uFace: { value: withFace ? 1 : 0 },
+    uFace: { value: faceMap ? 1 : 0 },
     uBlink: { value: 1 },
     uPulse: { value: 0 },
     uLook: { value: new THREE.Vector2() },
     uColor: { value: new THREE.Vector3(1, 1, 1) },
+    uFaceMap: { value: faceMap },
+    uFaceRect: {
+      value: new THREE.Vector4(
+        FACE_RECT.minX,
+        FACE_RECT.minY,
+        FACE_RECT.maxX - FACE_RECT.minX,
+        FACE_RECT.maxY - FACE_RECT.minY,
+      ),
+    },
+    uEyeL: { value: eye(0) },
+    uEyeR: { value: eye(1) },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
