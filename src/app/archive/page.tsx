@@ -3,8 +3,9 @@ import WorksGallery from "@/components/WorksGallery";
 import { works } from "@/content/works";
 
 export const metadata: Metadata = {
-  title: "Archive | The Miracle Ghost",
+  title: "Archive",
   description: "Paintings by The Miracle Ghost.",
+  alternates: { canonical: "/archive" },
 };
 
 export default function ArchivePage() {

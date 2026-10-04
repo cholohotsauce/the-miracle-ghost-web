@@ -15,7 +15,12 @@ export type TrickName =
   | "boing"
   | "boo"
   | "neon"
-  | "talk";
+  | "talk"
+  // Idle moods: they play when nobody touches the ghost for a while
+  | "bored"
+  | "yawn"
+  | "sleep"
+  | "grumpy";
 
 /** Offsets from the resting ghost. Rotations in radians, scales as multipliers, face values 0..1. */
 export type Pose = {
@@ -31,7 +36,7 @@ export type Pose = {
   grin: number;
   /** Smile flipped into a frown */
   frown: number;
-  /** Eyelids lowered from the top */
+  /** Eyelids lowered from the top. 1 is half shut; about 1.15 leaves only a short closed-eye stub. */
   lid: number;
   /** Neon glow strength; `glowT` drives the color cycle */
   glow: number;
@@ -70,6 +75,10 @@ export const TRICK_DURATION: Record<TrickName, number> = {
   boo: 2.0,
   neon: 3.0,
   talk: Infinity,
+  bored: 9,
+  yawn: 2.6,
+  sleep: Infinity,
+  grumpy: 1.9,
 };
 
 /** Clicks 1 to 9 after entry play these in order. Click 10 is the speech bubble. */
@@ -205,6 +214,50 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       const talking = clamp01((1.8 - u) * 2);
       out.grin = (0.35 + 0.35 * Math.sin(u * 17)) * talking * lean;
       out.frown = lean * (1 - talking);
+      break;
+    }
+    case "bored": {
+      // Looks one way, then the other, sighs and sags a little
+      const e = envelope(u, 0.8, 1.2, d);
+      out.lid = 0.6 * e;
+      out.lookX = 0.07 * Math.sin(u * 0.9) * e;
+      out.ry = 0.22 * Math.sin(u * 0.9) * e;
+      const sigh = Math.max(0, Math.sin(Math.PI * clamp01((u - 4.5) / 1.6)));
+      squashPose(out, -0.06 * sigh * e);
+      out.y -= 0.12 * e;
+      out.rz = 0.04 * Math.sin(u * 0.6) * e;
+      break;
+    }
+    case "yawn": {
+      // Stretches tall with the mouth wide open, then slumps
+      const open = envelope(u, 0.7, 0.9, d);
+      squashPose(out, 0.12 * open - 0.05 * smooth((u - 1.9) / 0.7));
+      out.grin = open;
+      out.lid = 0.6 + 0.6 * open;
+      out.rx = -0.12 * open;
+      out.y -= 0.12;
+      break;
+    }
+    case "sleep": {
+      // Eyes shut, slow breathing, head nodding to one side
+      const settle = smooth(u / 1.2);
+      const breath = Math.sin(u * 1.7);
+      out.lid = 1.15 * settle;
+      out.y = -0.4 * settle + 0.03 * breath;
+      out.rz = 0.1 * settle + 0.015 * breath;
+      out.rx = 0.08 * settle;
+      squashPose(out, 0.02 * breath * settle);
+      break;
+    }
+    case "grumpy": {
+      // Woken up: a jolt, a frown, and a grumble
+      const e = envelope(u, 0.1, 0.5, d);
+      out.frown = e;
+      out.lid = 0.7 * e;
+      const jolt = spring(u, 0.22, 6, 16);
+      squashPose(out, Math.max(jolt, -0.1));
+      const grumble = Math.exp(-1.8 * u) * clamp01((1.4 - u) * 3);
+      out.rz = 0.06 * Math.sin(26 * u) * grumble;
       break;
     }
   }

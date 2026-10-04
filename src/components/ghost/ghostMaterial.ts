@@ -82,7 +82,18 @@ const fragmentShader = /* glsl */ `
     if (abs(q.x) > eye.z * 4.0) return 0.0;
     float lidEdge = eye.w * (1.0 - 1.4 * uLid);
     float lid = 1.0 - smoothstep(lidEdge - 0.01, lidEdge + 0.01, q.y);
-    return texture2D(uFaceMap, faceUv(eye.xy + vec2(q.x, q.y / uBlink))).r * lid;
+    float open = texture2D(uFaceMap, faceUv(eye.xy + vec2(q.x, q.y / uBlink))).r * lid;
+
+    // Asleep (lid past 1): a small closed-eye curve where the eye was
+    float closed = smoothstep(1.0, 1.12, uLid);
+    if (closed > 0.0) {
+      float halfW = 0.075;
+      float curve = -eye.w * 0.55 + 5.3 * q.x * q.x;
+      float stroke = 1.0 - smoothstep(0.008, 0.013, abs(q.y - curve));
+      float ends = 1.0 - smoothstep(halfW - 0.006, halfW, abs(q.x));
+      open = max(open, closed * stroke * ends);
+    }
+    return open;
   }
 
   // The smile: widens and deepens into an open grin, or flips into a frown

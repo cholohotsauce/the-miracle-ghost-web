@@ -30,7 +30,15 @@ function toModelSpace(mesh: THREE.Mesh) {
 }
 
 /** Aes's sculpted ghost, driven by the same GhostControls as the rest of the stage. */
-export default function MiracleGhost({ controls, onPoke }: { controls: GhostControls; onPoke: () => void }) {
+export default function MiracleGhost({
+  controls,
+  onPoke,
+  onReady,
+}: {
+  controls: GhostControls;
+  onPoke: () => void;
+  onReady?: () => void;
+}) {
   const gltf = useGLTF(MODEL_URL, false, true);
   // Both maps are data, not color, so keep them out of sRGB decoding
   const [faceMap, haloMap] = useTexture([FACE_MAP_URL, HALO_MAP_URL], (textures) => {
@@ -48,6 +56,7 @@ export default function MiracleGhost({ controls, onPoke }: { controls: GhostCont
 
   const [rig] = useState(() => new GhostRig(controls.current, faceMap, haloMap));
   const trickGroup = useRef<THREE.Group>(null);
+  const frames = useRef(0);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(
@@ -60,6 +69,8 @@ export default function MiracleGhost({ controls, onPoke }: { controls: GhostCont
 
   useFrame((state, dt) => {
     rig.update(controls.current, state.clock.elapsedTime, dt, trickGroup.current);
+    // Two frames in, the ghost is on screen and the shaders are compiled
+    if (++frames.current === 2) onReady?.();
   });
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {

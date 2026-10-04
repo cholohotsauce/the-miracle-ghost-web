@@ -7,11 +7,7 @@ import * as THREE from "three";
 import MiracleGhost from "./MiracleGhost";
 import type { GhostControls } from "./types";
 
-const FOV = 32;
-// World-space area that must stay in frame: the ghost plus room to hop and flip
-const FRAME_HEIGHT = 5.8;
-const FRAME_WIDTH = 4.1;
-const LOOK_Y = -0.25;
+import { FOV, FRAME_HEIGHT, FRAME_WIDTH, LOOK_Y } from "./framing";
 
 /** Pulls the camera back on narrow screens so the whole ghost always fits. */
 function FitCamera() {
@@ -45,18 +41,31 @@ type Props = {
   controls: GhostControls;
   reducedMotion: boolean;
   onPoke: () => void;
+  /** Called once the model has drawn its first frame, so a still poster can fade away */
+  onReady?: () => void;
   fallback?: ReactNode;
+  /** Device-pixel-ratio range; the mini ghost uses a lower one to stay cheap */
+  dpr?: [number, number];
+  className?: string;
 };
 
 /** A transparent stage: the white page shows through around Aes's ghost. */
-export default function GhostStage({ controls, reducedMotion, onPoke, fallback }: Props) {
+export default function GhostStage({
+  controls,
+  reducedMotion,
+  onPoke,
+  onReady,
+  fallback,
+  dpr = [1, 2],
+  className = "!absolute inset-0",
+}: Props) {
   return (
     <Canvas
-      dpr={[1, 2]}
+      dpr={dpr}
       camera={{ fov: FOV, position: [0, 0, 10] }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       fallback={fallback}
-      className="!absolute inset-0"
+      className={className}
     >
       <FitCamera />
       <Follow controls={controls}>
@@ -68,7 +77,7 @@ export default function GhostStage({ controls, reducedMotion, onPoke, fallback }
           floatingRange={[-0.08, 0.08]}
         >
           <Suspense fallback={null}>
-            <MiracleGhost controls={controls} onPoke={onPoke} />
+            <MiracleGhost controls={controls} onPoke={onPoke} onReady={onReady} />
           </Suspense>
         </Float>
       </Follow>
