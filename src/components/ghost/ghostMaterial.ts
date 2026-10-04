@@ -2,12 +2,18 @@ import * as THREE from "three";
 import { EYES, FACE_RECT } from "./modelBake";
 
 /**
- * The airbrushed-glow look of Rommel's panels, as a shader on his sculpted ghost:
- * - asleep: a near-black body whose lobe tops catch a little light, with only the face glowing
- * - awake: a bright rim, a deeper core, a soft heart-light, faint colored veins, and spray-paint grain
+ * Aes's ghost as matte grey clay on a white page, like the render in his prototype video.
  * The face is his own polypainted linework, projected from the front (see modelBake.ts).
+ * On top of the clay: a grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick.
  * Colors are passed as sRGB triples and written out as-is.
  */
+
+/**
+ * The painted smile on miracle-ghost-face.png, in model XY. Measured from the face map:
+ * a circular arc whose ends sit on y = top and whose lowest point is at x = 0.
+ * Re-measure if Aes sends a new sculpt with a different face.
+ */
+const MOUTH = { top: 0.1485, cy: 0.3537, r: 0.3528, halfW: 0.287 };
 
 const vertexShader = /* glsl */ `
   // Distance in from the silhouette's edge, baked per vertex
@@ -26,10 +32,10 @@ const vertexShader = /* glsl */ `
     vec3 p = position;
 
     // A slow sway up the body and a drip that stretches and relaxes at the hem
-    float sway = sin(uTime * 1.1 + p.y * 2.0) * 0.022 * uMotion;
+    float sway = sin(uTime * 1.1 + p.y * 2.0) * 0.018 * uMotion;
     p.x += sway * smoothstep(1.6, -1.5, p.y);
     float hem = smoothstep(-0.55, -1.45, p.y);
-    p.y -= hem * (0.5 + 0.5 * sin(uTime * 1.6 + p.x * 4.0)) * 0.07 * uMotion;
+    p.y -= hem * (0.5 + 0.5 * sin(uTime * 1.6 + p.x * 4.0)) * 0.05 * uMotion;
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     vViewPos = mv.xyz;
@@ -43,48 +49,24 @@ const vertexShader = /* glsl */ `
 `;
 
 const fragmentShader = /* glsl */ `
-  uniform float uTime;
-  uniform float uWake;
-  uniform float uFace;
+  uniform float uGrin;
+  uniform float uFrown;
+  uniform float uLid;
   uniform float uBlink;
-  uniform float uPulse;
+  uniform float uGlow;
+  uniform vec3 uGlowColor;
   uniform vec2 uLook;
-  uniform vec3 uColor;
   uniform sampler2D uFaceMap;
   uniform vec4 uFaceRect;
   uniform vec4 uEyeL;
   uniform vec4 uEyeR;
+  uniform vec4 uMouth;
 
   varying vec3 vNormal;
   varying vec3 vViewPos;
   varying vec2 vShape;
   varying float vDepth;
   varying float vFront;
-
-  // 2D simplex noise (Ashima Arts, MIT)
-  vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
-  float snoise(vec2 v) {
-    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-    vec2 i = floor(v + dot(v, C.yy));
-    vec2 x0 = v - i + dot(i, C.xx);
-    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    vec4 x12 = x0.xyxy + C.xxzz;
-    x12.xy -= i1;
-    i = mod(i, 289.0);
-    vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
-    vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
-    m = m * m;
-    m = m * m;
-    vec3 x = 2.0 * fract(p * C.www) - 1.0;
-    vec3 h = abs(x) - 0.5;
-    vec3 ox = floor(x + 0.5);
-    vec3 a0 = x - ox;
-    m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
-    vec3 g;
-    g.x = a0.x * x0.x + h.x * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130.0 * dot(m, g);
-  }
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -94,16 +76,33 @@ const fragmentShader = /* glsl */ `
     return (p - uFaceRect.xy) / uFaceRect.zw;
   }
 
-  // Ink of one painted eye, squashed toward its center while blinking. bias > 0 reads a blurrier mip for glow.
-  float eyeInk(vec2 f, vec4 eye, float bias) {
+  // One painted eye, squashed toward its center while blinking, cut from the top by the lid
+  float eyeInk(vec2 f, vec4 eye) {
     vec2 q = f - eye.xy;
     if (abs(q.x) > eye.z * 4.0) return 0.0;
-    return texture2D(uFaceMap, faceUv(eye.xy + vec2(q.x, q.y / uBlink)), bias).r;
+    float lidEdge = eye.w * (1.0 - 1.4 * uLid);
+    float lid = 1.0 - smoothstep(lidEdge - 0.01, lidEdge + 0.01, q.y);
+    return texture2D(uFaceMap, faceUv(eye.xy + vec2(q.x, q.y / uBlink))).r * lid;
   }
 
-  float faceInk(vec2 f, float bias) {
-    float mouth = texture2D(uFaceMap, faceUv(f), bias).g;
-    return max(mouth, max(eyeInk(f, uEyeL, bias), eyeInk(f, uEyeR, bias)));
+  // The smile: widens and deepens into an open grin, or flips into a frown
+  float mouthInk(vec2 f) {
+    float top = uMouth.x;
+    vec2 p = f;
+    p.x /= 1.0 + 0.3 * uGrin;
+    p.y = top + (p.y - top) / (1.0 + 0.45 * uGrin);
+
+    float lowest = uMouth.y - uMouth.z;
+    vec2 flipped = vec2(p.x, top + lowest - p.y);
+    // A quick crossfade, so the smile and frown never sit on the face together for long
+    float flip = smoothstep(0.3, 0.7, uFrown);
+    float line = mix(texture2D(uFaceMap, faceUv(p)).g, texture2D(uFaceMap, faceUv(flipped)).g, flip);
+
+    // Open mouth: the area between the arc and the line joining its ends
+    float inside = 1.0 - smoothstep(uMouth.z - 0.008, uMouth.z, length(p - vec2(0.0, uMouth.y)));
+    float below = 1.0 - smoothstep(top - 0.006, top + 0.002, p.y);
+    float open = inside * below * smoothstep(0.15, 0.6, uGrin) * (1.0 - flip);
+    return max(line, open);
   }
 
   void main() {
@@ -111,43 +110,31 @@ const fragmentShader = /* glsl */ `
     if (!gl_FrontFacing) n = -n;
     vec3 v = normalize(-vViewPos);
     float ndv = clamp(dot(n, v), 0.0, 1.0);
-    float rim = pow(1.0 - ndv, 2.2);
-    float top = pow(max(dot(n, normalize(vec3(-0.15, 0.95, 0.35))), 0.0), 5.0);
-    float grain = hash(floor(gl_FragCoord.xy)) - 0.5;
 
-    // Dormant: like the black panel, the body barely separates from the dark
-    vec3 asleep = vec3(0.02, 0.022, 0.03) + vec3(0.11, 0.12, 0.15) * top + vec3(0.025) * rim;
+    // Matte clay: a soft key light from the upper left, sky fill, and darker creases near the edges
+    vec3 key = normalize(vec3(-0.45, 0.65, 0.62));
+    float wrap = clamp((dot(n, key) + 0.35) / 1.35, 0.0, 1.0);
+    float sky = 0.5 + 0.5 * n.y;
+    float edge = smoothstep(0.0, 0.32, vDepth);
+    float fresnel = pow(1.0 - ndv, 3.0);
+    float spec = pow(max(dot(reflect(-key, n), v), 0.0), 18.0);
 
-    // Awake: glowing rim and lobe tops, a deeper core
-    float core = smoothstep(0.05, 0.5, vDepth);
-    vec3 deep = uColor * 0.16 + vec3(0.015, 0.02, 0.05);
-    float edge = 1.0 - smoothstep(0.0, 0.2, vDepth);
-    vec3 lit = deep + uColor * (rim * 1.1 + edge * 0.45 + top * 0.35 + (1.0 - core) * 0.3);
-    lit += uColor * 0.5 * uPulse;
+    vec3 clay = vec3(0.70, 0.705, 0.715);
+    vec3 color = clay * (0.32 + 0.62 * wrap + 0.16 * sky);
+    color *= mix(0.62, 1.0, edge);
+    color -= fresnel * 0.12;
+    color += spec * 0.1;
+    color += (hash(floor(gl_FragCoord.xy)) - 0.5) * 0.02;
 
-    // Heart-light at the chest, below the smile
-    float heart = exp(-length(vShape - vec2(0.0, -0.42)) * 5.5) * vFront * uFace;
-    lit += mix(uColor, vec3(1.0), 0.6) * heart * 0.9;
+    // Neon: a bright rim and lit core in the glow color
+    color = mix(color, color * 0.55 + uGlowColor * (0.35 + 1.1 * pow(1.0 - ndv, 1.6)), uGlow);
 
-    // Short veins drifting inside, warm and cool like the luminous panel
-    vec2 vp = vShape * 3.4 + vec2(0.0, uTime * 0.04);
-    float vein = 1.0 - smoothstep(0.0, 0.03, abs(snoise(vp)));
-    float veinMask = smoothstep(0.35, 0.7, snoise(vShape * 2.3 + vec2(3.1, -uTime * 0.03)));
-    float hue = snoise(vShape * 1.3 + 7.0);
-    vec3 veinColor = hue > 0.0 ? vec3(1.0, 0.35, 0.3) : vec3(0.35, 0.75, 1.0);
-    lit += veinColor * vein * veinMask * 0.55 * uFace * core;
-
-    vec3 color = mix(asleep, lit, uWake);
-    color += grain * mix(0.015, 0.05, uWake);
-
-    // Face: Rommel's painted eyes and smile, glowing even while the ghost sleeps
-    if (uFace > 0.5 && vFront > 0.01) {
+    // Face: Aes's painted eyes and smile, in ink
+    if (vFront > 0.01) {
       vec2 f = vShape - uLook;
-      float line = faceInk(f, 0.0) * vFront;
-      float halo = faceInk(f, 4.0) * vFront;
-      vec3 faceColor = vec3(1.0);
-      color = mix(color, faceColor, line * mix(0.85, 1.0, uWake));
-      color += faceColor * halo * mix(0.35, 0.8, uWake) * (1.0 - line);
+      float ink = max(mouthInk(f), max(eyeInk(f, uEyeL), eyeInk(f, uEyeR))) * vFront;
+      vec3 inkColor = mix(vec3(0.05), vec3(1.0), uGlow * 0.9);
+      color = mix(color, inkColor, ink);
     }
 
     gl_FragColor = vec4(color, 1.0);
@@ -157,30 +144,32 @@ const fragmentShader = /* glsl */ `
 export type GhostUniforms = {
   uTime: { value: number };
   uMotion: { value: number };
-  uWake: { value: number };
-  uFace: { value: number };
+  uGrin: { value: number };
+  uFrown: { value: number };
+  uLid: { value: number };
   uBlink: { value: number };
-  uPulse: { value: number };
+  uGlow: { value: number };
+  uGlowColor: { value: THREE.Vector3 };
   uLook: { value: THREE.Vector2 };
-  uColor: { value: THREE.Vector3 };
-  uFaceMap: { value: THREE.Texture | null };
+  uFaceMap: { value: THREE.Texture };
   uFaceRect: { value: THREE.Vector4 };
   uEyeL: { value: THREE.Vector4 };
   uEyeR: { value: THREE.Vector4 };
+  uMouth: { value: THREE.Vector4 };
 };
 
-/** Without a face map the material draws a plain body, as the droplets use. */
-export function createGhostMaterial(faceMap: THREE.Texture | null) {
+export function createGhostMaterial(faceMap: THREE.Texture) {
   const eye = (i: number) => new THREE.Vector4(EYES[i].cx, EYES[i].cy, EYES[i].halfW, EYES[i].halfH);
   const uniforms: GhostUniforms = {
     uTime: { value: 0 },
     uMotion: { value: 1 },
-    uWake: { value: 0 },
-    uFace: { value: faceMap ? 1 : 0 },
+    uGrin: { value: 0 },
+    uFrown: { value: 0 },
+    uLid: { value: 0 },
     uBlink: { value: 1 },
-    uPulse: { value: 0 },
+    uGlow: { value: 0 },
+    uGlowColor: { value: new THREE.Vector3(1, 1, 1) },
     uLook: { value: new THREE.Vector2() },
-    uColor: { value: new THREE.Vector3(1, 1, 1) },
     uFaceMap: { value: faceMap },
     uFaceRect: {
       value: new THREE.Vector4(
@@ -192,6 +181,7 @@ export function createGhostMaterial(faceMap: THREE.Texture | null) {
     },
     uEyeL: { value: eye(0) },
     uEyeR: { value: eye(1) },
+    uMouth: { value: new THREE.Vector4(MOUTH.top, MOUTH.cy, MOUTH.r, MOUTH.halfW) },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -216,13 +206,14 @@ const haloFragment = /* glsl */ `
   uniform float uStrength;
   varying vec2 vUv;
   void main() {
-    float a = texture2D(uMap, vUv).a;
-    // Dither so the faint outer glow doesn't band on 8-bit screens
-    float dither = (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
-    gl_FragColor = vec4(uColor * a * uStrength + dither, 1.0);
+    // Fade to nothing before the plane's edges so its outline never shows on the white page
+    vec2 edge = smoothstep(0.0, 0.18, vUv) * smoothstep(0.0, 0.18, 1.0 - vUv);
+    float a = texture2D(uMap, vUv).a * edge.x * edge.y;
+    gl_FragColor = vec4(uColor, a * uStrength);
   }
 `;
 
+/** The soft light the ghost throws on the white wall during the neon trick */
 export function createHaloMaterial(map: THREE.Texture) {
   const uniforms = {
     uMap: { value: map },
@@ -233,7 +224,6 @@ export function createHaloMaterial(map: THREE.Texture) {
     uniforms,
     vertexShader: haloVertex,
     fragmentShader: haloFragment,
-    blending: THREE.AdditiveBlending,
     depthWrite: false,
     transparent: true,
   });

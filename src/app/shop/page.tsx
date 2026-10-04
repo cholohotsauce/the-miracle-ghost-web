@@ -3,7 +3,7 @@ import ShopifyBuyButton from "@/components/ShopifyBuyButton";
 
 export default function ShopPage() {
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-24 md:pt-32 px-5 md:px-6 lg:px-12 pb-mobile-nav">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-24 md:pt-32 px-5 md:px-6 lg:px-12 pb-page">
       <h1 className="text-3xl md:text-4xl font-black tracking-widest uppercase mb-8 md:mb-12">Shop / Drops</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 touch-pan-y">
