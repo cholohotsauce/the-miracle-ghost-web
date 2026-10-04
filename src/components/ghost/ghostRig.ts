@@ -1,20 +1,41 @@
 import * as THREE from "three";
-import { buildDropletGeometry, buildGhostGeometry, buildHaloTexture, HALO_SIZE } from "./buildGhostGeometry";
 import { createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
-import { DRIP_TIPS } from "./silhouette";
+import { HALO_RECT, MODEL_DRIP_TIPS } from "./modelBake";
 import type { GhostState } from "./types";
 
 const DROP_PERIOD = 3.4;
-const HALO_MARGIN = 1.1;
 
-/** Owns the ghost's GPU resources and advances its animation each frame. */
+// Droplets fall from the three middle drips of the hem; the wing tips stay dry
+export const DRIP_TIPS = MODEL_DRIP_TIPS.filter(([x]) => Math.abs(x) < 0.8);
+
+export const HALO_SIZE = {
+  width: HALO_RECT.maxX - HALO_RECT.minX,
+  height: HALO_RECT.maxY - HALO_RECT.minY,
+  centerY: (HALO_RECT.maxY + HALO_RECT.minY) / 2,
+};
+
+/** A falling droplet: a lathe teardrop with its point up. */
+function buildDropletGeometry(): THREE.BufferGeometry {
+  const points: THREE.Vector2[] = [];
+  const steps = 24;
+  for (let k = 0; k <= steps; k++) {
+    const t = (k / steps) * Math.PI;
+    const x = Math.sin(t) * Math.pow(Math.sin(t / 2), 1.6) * 0.6;
+    const y = Math.cos(t);
+    points.push(new THREE.Vector2(Math.max(x, 1e-4), y));
+  }
+  // Lathe expects the profile from bottom to top
+  const geometry = new THREE.LatheGeometry(points.reverse(), 24);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+/** Owns the ghost's materials and droplets and advances its animation each frame. The loaded textures belong to the GLTF cache. */
 export class GhostRig {
-  readonly geometry = buildGhostGeometry();
   readonly dropGeometry = buildDropletGeometry();
-  readonly body = createGhostMaterial(true);
-  readonly drop = createGhostMaterial(false);
-  readonly halo = createHaloMaterial(buildHaloTexture(256, HALO_MARGIN));
-  readonly haloSize = HALO_SIZE(HALO_MARGIN);
+  readonly body: ReturnType<typeof createGhostMaterial>;
+  readonly drop = createGhostMaterial(null);
+  readonly halo: ReturnType<typeof createHaloMaterial>;
 
   private color = new THREE.Vector3(1, 1, 1);
   private target = new THREE.Vector3();
@@ -23,7 +44,9 @@ export class GhostRig {
   private pulse = 0;
   private lastPoke = 0;
 
-  constructor(initial: GhostState) {
+  constructor(initial: GhostState, faceMap: THREE.Texture, haloMap: THREE.Texture) {
+    this.body = createGhostMaterial(faceMap);
+    this.halo = createHaloMaterial(haloMap);
     hexToVec3(initial.color, this.color);
     this.lastPoke = initial.pokes;
   }
@@ -108,13 +131,9 @@ export class GhostRig {
   }
 
   dispose() {
-    this.geometry.dispose();
     this.dropGeometry.dispose();
     this.body.material.dispose();
     this.drop.material.dispose();
-    this.halo.uniforms.uMap.value.dispose();
     this.halo.material.dispose();
   }
 }
-
-export { DRIP_TIPS };

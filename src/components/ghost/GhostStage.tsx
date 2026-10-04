@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { Suspense, useRef, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
-import ProceduralGhost from "./ProceduralGhost";
+import MiracleGhost from "./MiracleGhost";
 import type { GhostControls } from "./types";
 
 const PANEL_COLOR = "#060609";
@@ -51,10 +51,7 @@ type Props = {
   fallback?: ReactNode;
 };
 
-/**
- * The dark panel the ghost lives in. Swap <ProceduralGhost> for the artist's GLB here
- * once it arrives; everything else (camera, follow, glow, particles) stays.
- */
+/** The dark panel the ghost lives in: camera, follow, float, and particles around Rommel's model. */
 export default function GhostStage({ controls, awake, color, reducedMotion, active, onPoke, fallback }: Props) {
   return (
     <Canvas
@@ -75,7 +72,10 @@ export default function GhostStage({ controls, awake, color, reducedMotion, acti
           floatIntensity={0.6}
           floatingRange={[-0.08, 0.08]}
         >
-          <ProceduralGhost controls={controls} onPoke={onPoke} />
+          {/* The sparkles show while the model streams in */}
+          <Suspense fallback={null}>
+            <MiracleGhost controls={controls} onPoke={onPoke} />
+          </Suspense>
         </Float>
       </Follow>
       <Sparkles
