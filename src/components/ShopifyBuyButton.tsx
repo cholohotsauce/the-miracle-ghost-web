@@ -1,8 +1,32 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { emitGhost } from "@/lib/ghostBus";
+import { SHOP_DOMAIN, STOREFRONT_TOKEN } from "@/lib/shopify";
+import { track } from "@/lib/stats";
 
-export default function ShopifyBuyButton({ productId }: { productId: string }) {
+type Props = {
+  productId: string;
+  /** "card" shows Shopify's image, title, and price too; "button" shows only Add to Cart, for our own product pages */
+  layout?: "card" | "button";
+};
+
+/** The parts of the Buy Button SDK this file uses. The SDK ships no types. */
+type BuyUI = { createComponent: (kind: "product", config: Record<string, unknown>) => unknown };
+type ShopifyBuyGlobal = {
+  buildClient: (config: { domain: string; storefrontAccessToken: string }) => unknown;
+  UI?: { onReady: (client: unknown) => Promise<BuyUI> };
+};
+const sdk = () => (window as unknown as { ShopifyBuy?: ShopifyBuyGlobal }).ShopifyBuy;
+
+/** Counts items in the Buy Button cart. The SDK's cart object isn't typed, so read it defensively. */
+function cartCount(cart: unknown) {
+  const c = cart as { model?: { lineItems?: { quantity?: number }[] }; lineItemCache?: { quantity?: number }[] };
+  const items = c?.model?.lineItems ?? c?.lineItemCache;
+  return Array.isArray(items) ? items.reduce((n, i) => n + (i?.quantity ?? 0), 0) : null;
+}
+
+export default function ShopifyBuyButton({ productId, layout = "card" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,23 +40,40 @@ export default function ShopifyBuyButton({ productId }: { productId: string }) {
       document.body.appendChild(script);
     }
 
+    const node = containerRef.current;
+    let cancelled = false;
+
     const loadShopify = () => {
-      const ShopifyBuy = (window as any).ShopifyBuy;
+      const ShopifyBuy = sdk();
 
       if (ShopifyBuy && ShopifyBuy.UI) {
         // Initialize a placeholder client
         const client = ShopifyBuy.buildClient({
-          domain: 'themiracleghost.myshopify.com',
-          storefrontAccessToken: '8f303ed215e5f3413f1c496f63fa84e3',
+          domain: SHOP_DOMAIN,
+          storefrontAccessToken: STOREFRONT_TOKEN,
         });
 
-        ShopifyBuy.UI.onReady(client).then((ui: any) => {
+        ShopifyBuy.UI.onReady(client).then((ui) => {
+          if (cancelled || !node) return;
           ui.createComponent('product', {
             id: productId,
-            node: containerRef.current,
+            node,
             moneyFormat: '%24%7B%7Bamount%7D%7D',
             options: {
               product: {
+                // The ghost reacts when something goes in the cart
+                events: {
+                  addVariantToCart: () => {
+                    emitGhost({ type: "cart-add" });
+                    track("add_to_cart");
+                  },
+                },
+                ...(layout === "button"
+                  ? {
+                      contents: { img: false, title: false, price: false, options: false, button: true },
+                      width: "100%",
+                    }
+                  : {}),
                 styles: {
                   product: {
                     '@media (min-width: 601px)': {
@@ -42,6 +83,9 @@ export default function ShopifyBuyButton({ productId }: { productId: string }) {
                     },
                     'text-align': 'center',
                   },
+                  ...(layout === "button"
+                    ? { buttonWrapper: { 'margin-top': '0' } }
+                    : {}),
                   title: {
                     'font-family': 'var(--font-sans), sans-serif',
                     'font-weight': '900',
@@ -58,6 +102,7 @@ export default function ShopifyBuyButton({ productId }: { productId: string }) {
                     'color': '#ff00ff', // Glowing pink
                   },
                   button: {
+                    ...(layout === "button" ? { width: '100%' } : {}),
                     'font-family': 'var(--font-mono), monospace',
                     'font-weight': 'bold',
                     'text-transform': 'uppercase',
@@ -82,6 +127,11 @@ export default function ShopifyBuyButton({ productId }: { productId: string }) {
                 },
               },
               cart: {
+                events: {
+                  updateItemQuantity: (cart: unknown) => {
+                    if (cartCount(cart) === 0) emitGhost({ type: "cart-empty" });
+                  },
+                },
                 styles: {
                   button: {
                     'font-family': 'var(--font-mono), monospace',
@@ -128,20 +178,19 @@ export default function ShopifyBuyButton({ productId }: { productId: string }) {
       }
     };
 
-    if ((window as any).ShopifyBuy && (window as any).ShopifyBuy.UI) {
+    if (sdk()?.UI) {
       loadShopify();
     } else {
       script.addEventListener("load", loadShopify);
     }
 
     return () => {
+      cancelled = true;
       script.removeEventListener("load", loadShopify);
-      if (containerRef.current) {
-        // Cleanup the mounted Shopify iframe on unmount
-        containerRef.current.innerHTML = '';
-      }
+      // Clean up the mounted Shopify iframe on unmount
+      if (node) node.innerHTML = '';
     };
-  }, [productId]);
+  }, [productId, layout]);
 
   return <div id={productId} ref={containerRef}></div>;
 }

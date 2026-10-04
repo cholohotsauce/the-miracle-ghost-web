@@ -6,4 +6,7 @@ export const MAX_CONTACT = 120;
 /** What the ghost barks on the tenth click. Aes's words from his video, lightly bleeped. */
 export const GHOST_QUESTION = "What the f*ck do you want?";
 
-export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+/** What the ghost says once the message is sent */
+export const GHOST_SENT = "Got it. Now beat it.";
+
+export { isEmail } from "./spam";

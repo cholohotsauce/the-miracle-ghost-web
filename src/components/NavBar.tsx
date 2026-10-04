@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useEntered } from "@/lib/entry";
+import TransitionLink from "./site/TransitionLink";
 
 // Aes's menu, in his order. The archive page still exists; it just isn't in his menu.
 const links = [
@@ -37,8 +37,9 @@ export default function NavBar() {
             const active = isActive(pathname, href);
             return (
               <li key={href}>
-                <Link
+                <TransitionLink
                   href={href}
+                  curtain={label}
                   aria-current={active ? "page" : undefined}
                   className="group relative block px-1 py-1 font-drip text-[clamp(1.35rem,5.6vw,2.6rem)] uppercase leading-none text-foreground"
                 >
@@ -51,7 +52,7 @@ export default function NavBar() {
                       active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
                     }`}
                   />
-                </Link>
+                </TransitionLink>
               </li>
             );
           })}

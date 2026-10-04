@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { GHOST_QUESTION, MAX_CONTACT, MAX_MESSAGE } from "@/lib/ghostMessage";
+import EarlyAccessForm from "@/components/site/EarlyAccessForm";
+import { GHOST_QUESTION, GHOST_SENT, MAX_CONTACT, MAX_MESSAGE } from "@/lib/ghostMessage";
+import { drawInsultCard, shareInsultCard } from "@/lib/shareCard";
+import { track } from "@/lib/stats";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -11,11 +14,17 @@ const ERRORS: Record<number, string> = {
   503: "The ghost's mailbox isn't open yet. Try again soon.",
 };
 
-/** The tenth click: the ghost barks a question, the visitor answers, and the answer goes to Aes. */
+/**
+ * The tenth click: the ghost barks a question, the visitor answers, and the answer goes to Aes.
+ * Afterwards the visitor can save a "told me off" card to post, and join the early access list.
+ */
 export default function SpeechBubble({ onDone }: { onDone: () => void }) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [openedAt] = useState(() => Date.now());
+  const [card, setCard] = useState<Promise<Blob> | null>(null);
+  const [saved, setSaved] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -24,13 +33,6 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onDone]);
-
-  // After a send, let the thanks sit for a moment, then reset the ghost
-  useEffect(() => {
-    if (status !== "sent") return;
-    const t = setTimeout(onDone, 2800);
-    return () => clearTimeout(t);
-  }, [status, onDone]);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,13 +47,32 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
           message: form.get("message"),
           contact: form.get("contact"),
           website: form.get("website"),
+          openedAt,
         }),
       });
       if (!res.ok) throw new Error(ERRORS[res.status] ?? "The ghost dropped it. Try again.");
       setStatus("sent");
+      track("ghost_message_sent");
+      // Draw the card now, so sharing it later happens straight from the tap (Safari requires that)
+      const drawing = drawInsultCard();
+      drawing.catch(() => {});
+      setCard(drawing);
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "The ghost dropped it. Try again.");
       setStatus("error");
+    }
+  }
+
+  async function saveCard() {
+    if (!card) return;
+    try {
+      const result = await shareInsultCard(await card);
+      if (result !== "cancelled") {
+        setSaved(true);
+        track("ghost_card_saved", { how: result });
+      }
+    } catch {
+      // Drawing failed (very old browser); the button just does nothing
     }
   }
 
@@ -65,13 +86,34 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
       exit={{ opacity: 0, scale: 0.8, y: 20 }}
       transition={{ type: "spring", stiffness: 380, damping: 22 }}
       style={{ transformOrigin: "50% 100%" }}
+      data-ui
       className="absolute inset-x-0 mx-auto top-[calc(max(0.75rem,env(safe-area-inset-top))+4.25rem)] z-20 w-[min(23rem,calc(100vw-2rem))] md:top-28"
     >
       <div className="relative rounded-[1.75rem] border-[3px] border-foreground bg-background px-5 pb-5 pt-4 shadow-[6px_6px_0_var(--color-foreground)]">
         {status === "sent" ? (
-          <p className="py-6 text-center font-drip text-3xl uppercase leading-tight" role="status">
-            Got it. Now beat it.
-          </p>
+          <div className="flex flex-col gap-4" role="status">
+            <p id="ghost-question" className="pt-2 text-center font-drip text-3xl uppercase leading-tight">
+              {GHOST_SENT}
+            </p>
+            <button
+              type="button"
+              onClick={saveCard}
+              disabled={!card}
+              className="h-11 rounded-full border-2 border-foreground font-mono text-xs uppercase tracking-[0.2em] transition-shadow hover:shadow-[4px_4px_0_var(--color-neon-pink)] disabled:opacity-40"
+            >
+              {saved ? "Saved. Go post it." : "Save the card. Post it."}
+            </button>
+            <div className="border-t-2 border-dashed border-foreground/20 pt-3">
+              <EarlyAccessForm from="bubble" compact />
+            </div>
+            <button
+              type="button"
+              onClick={onDone}
+              className="h-9 self-center px-2 font-mono text-[11px] uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline"
+            >
+              Done
+            </button>
+          </div>
         ) : (
           <form onSubmit={submit} className="flex flex-col gap-3">
             <h2 id="ghost-question" className="font-drip text-[1.75rem] uppercase leading-[1.05] md:text-3xl">
