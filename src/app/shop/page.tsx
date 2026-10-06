@@ -19,7 +19,7 @@ export default async function ShopPage() {
   const drop = activeNextDrop();
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-24 md:pt-32 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-28 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b-2 border-line pb-4 md:mb-12">
         <h1 className="text-4xl font-black uppercase leading-none tracking-widest md:text-6xl">Shop</h1>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">

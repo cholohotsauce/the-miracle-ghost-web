@@ -15,17 +15,22 @@ export type TrickName =
   | "boing"
   | "boo"
   | "neon"
+  | "fire"
+  | "shades"
   | "talk"
   // Idle moods: they play when nobody touches the ghost for a while
   | "bored"
   | "yawn"
   | "sleep"
+  | "waking"
   | "grumpy";
 
 /** Offsets from the resting ghost. Rotations in radians, scales as multipliers, face values 0..1. */
 export type Pose = {
   x: number;
   y: number;
+  /** Toward the camera */
+  z: number;
   rx: number;
   ry: number;
   rz: number;
@@ -43,11 +48,26 @@ export type Pose = {
   glowT: number;
   /** Extra gaze offset, in face units */
   lookX: number;
+  /** A third eye on the forehead, opening sideways (0 is a shut slit) */
+  third: number;
+  /** Sunglasses sliding down onto the face */
+  shades: number;
+  /** The gold tooth in the open mouth, and its sparkle */
+  tooth: number;
+  glint: number;
+  /** Flames: strength, how far up the body they have climbed, soot left behind, smoke after */
+  fire: number;
+  fireLevel: number;
+  soot: number;
+  smoke: number;
+  /** The groggy waking face: squinting V eyes and worried, raised brows */
+  wake: number;
 };
 
 export const REST: Readonly<Pose> = {
   x: 0,
   y: 0,
+  z: 0,
   rx: 0,
   ry: 0,
   rz: 0,
@@ -60,6 +80,15 @@ export const REST: Readonly<Pose> = {
   glow: 0,
   glowT: 0,
   lookX: 0,
+  third: 0,
+  shades: 0,
+  tooth: 0,
+  glint: 0,
+  fire: 0,
+  fireLevel: 0,
+  soot: 0,
+  smoke: 0,
+  wake: 0,
 };
 
 /** Seconds each trick runs. `talk` holds until the speech bubble closes. */
@@ -73,24 +102,32 @@ export const TRICK_DURATION: Record<TrickName, number> = {
   backflip: 1.3,
   boing: 1.9,
   boo: 2.0,
-  neon: 3.0,
+  neon: 3.8,
+  fire: 4.8,
+  shades: 3.8,
   talk: Infinity,
   bored: 9,
   yawn: 2.6,
   sleep: Infinity,
+  waking: 2.2,
   grumpy: 1.9,
+};
+
+/** Tricks that roll straight into another when they finish */
+export const TRICK_NEXT: Partial<Record<TrickName, TrickName>> = {
+  waking: "grumpy",
 };
 
 /** Clicks 1 to 9 after entry play these in order. Click 10 is the speech bubble. */
 export const TRICK_ORDER: TrickName[] = [
   "spin",
-  "squash",
   "annoyed shake",
   "peek",
-  "grin pop",
+  "shades",
   "backflip",
   "boing",
   "boo",
+  "fire",
   "neon",
 ];
 
@@ -202,6 +239,43 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.glow = envelope(u, 0.3, 0.7, d);
       out.glowT = u;
       out.rz = 0.05 * Math.sin(u * 5) * out.glow;
+      // Once the colors are going, a third eye splits open on his forehead, blinks once, and shuts again
+      const blinkAt = 2.2;
+      const blink = 1 - Math.max(0, Math.sin(Math.PI * clamp01((u - blinkAt) / 0.22)));
+      out.third = envelope(u - 0.6, 0.45, 0.5, d - 1.0) * blink;
+      break;
+    }
+    case "fire": {
+      // Catches fire from the hem up, panics and runs on the spot, goes out in a puff of smoke, sooty and dazed
+      const doused = 3.3;
+      out.fire = envelope(u, 0.3, 0.35, doused);
+      out.fireLevel = smooth(u / 1.1);
+      out.soot = smooth((u - 1.8) / 1.2) * (1 - smooth((u - 3.9) / 0.9));
+      out.smoke = u > doused - 0.4 ? envelope(u - (doused - 0.4), 0.25, 1.0, d - doused + 0.4) : 0;
+      const panic = envelope(u, 0.35, 0.3, doused);
+      out.frown = panic;
+      out.grin = panic * (0.75 + 0.25 * Math.sin(u * 24));
+      out.y = 0.2 * Math.abs(Math.sin(u * 11)) * panic;
+      out.x = 0.16 * Math.sin(u * 5.5) * panic;
+      out.rz = -0.07 * Math.sin(u * 5.5) * panic;
+      out.ry = 0.25 * Math.sin(u * 5.5) * panic;
+      // Out: a dazed squash and half-shut eyes
+      const dazed = envelope(u - doused, 0.15, 0.6, d - doused);
+      squashPose(out, -0.1 * dazed);
+      out.lid = 0.65 * dazed;
+      break;
+    }
+    case "shades": {
+      // Sunglasses slide down, he leans right up to the glass, flashes a gold tooth, and backs off
+      out.shades = envelope(u, 0.45, 0.45, d);
+      const near = Math.min(easeInOutCubic((u - 0.35) / 0.75), easeInOutCubic((d - 0.35 - u) / 0.75));
+      out.z = 3.4 * near;
+      out.y = -0.5 * near;
+      out.rz = 0.1 * near;
+      out.grin = smooth((u - 1.0) / 0.25) * smooth((d - 0.55 - u) / 0.3);
+      out.lid = 0.3 * out.grin;
+      out.tooth = out.grin;
+      out.glint = Math.max(0, Math.sin(Math.PI * clamp01((u - 1.45) / 0.55)));
       break;
     }
     case "talk": {
@@ -249,6 +323,19 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       squashPose(out, 0.02 * breath * settle);
       break;
     }
+    case "waking": {
+      // Poked awake: eyes crack open into a squint, brows go up, he sags back once, then drags himself upright
+      const e = envelope(u, 0.35, 0.45, d);
+      out.wake = e;
+      const sag = Math.max(0, Math.sin(Math.PI * clamp01((u - 0.8) / 0.7)));
+      out.lid = 1.15 - 0.65 * smooth(u / 0.6) + 0.3 * sag;
+      const up = smooth(u / 1.8);
+      out.y = -0.4 * (1 - up) - 0.08 * sag;
+      out.rz = 0.1 * (1 - up);
+      out.rx = 0.08 * (1 - up);
+      squashPose(out, 0.06 * Math.sin(Math.PI * clamp01((u - 1.2) / 0.9)));
+      break;
+    }
     case "grumpy": {
       // Woken up: a jolt, a frown, and a grumble
       const e = envelope(u, 0.1, 0.5, d);
@@ -265,7 +352,7 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
   if (reducedMotion) {
     // Keep the face, glow, and the boo's vanish; drop the movement
     const keepScale = name === "boo" ? out.sx : 1;
-    Object.assign(out, { x: 0, y: 0, rx: 0, ry: 0, rz: 0, sx: keepScale, sy: keepScale, sz: keepScale, lookX: 0 });
+    Object.assign(out, { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: keepScale, sy: keepScale, sz: keepScale, lookX: 0 });
   }
   return out;
 }

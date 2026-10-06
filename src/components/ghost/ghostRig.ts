@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
+import { createFireMaterial, createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
 import { HALO_RECT } from "./modelBake";
-import { blendPose, poseAt, REST, TRICK_DURATION, type Pose, type TrickName } from "./tricks";
+import { blendPose, poseAt, REST, TRICK_DURATION, TRICK_NEXT, type Pose, type TrickName } from "./tricks";
 import type { GhostState } from "./types";
 
 export const HALO_SIZE = {
@@ -9,6 +9,9 @@ export const HALO_SIZE = {
   height: HALO_RECT.maxY - HALO_RECT.minY,
   centerY: (HALO_RECT.maxY + HALO_RECT.minY) / 2,
 };
+
+/** The plane behind the ghost that carries the fire trick's flames: room above his head for them to rise */
+export const FIRE_PLANE = { minX: -2.4, minY: -1.9, width: 4.8, height: 5.2, z: -0.75 };
 
 /** The neon trick cycles through the brand accents */
 const NEON = ["#39ff14", "#ff00ff", "#00ffff"].map((hex) => hexToVec3(hex));
@@ -24,6 +27,7 @@ const BLEND_IN = 0.18;
 export class GhostRig {
   readonly body: ReturnType<typeof createGhostMaterial>;
   readonly halo: ReturnType<typeof createHaloMaterial>;
+  readonly fire: ReturnType<typeof createFireMaterial>;
 
   private trick: { name: TrickName | null; seq: number; start: number } = { name: null, seq: 0, start: 0 };
   private from: Pose = { ...REST };
@@ -36,6 +40,11 @@ export class GhostRig {
   constructor(initial: GhostState, faceMap: THREE.Texture, haloMap: THREE.Texture) {
     this.body = createGhostMaterial(faceMap);
     this.halo = createHaloMaterial(haloMap);
+    this.fire = createFireMaterial(
+      haloMap,
+      new THREE.Vector4(HALO_RECT.minX, HALO_RECT.minY, HALO_SIZE.width, HALO_SIZE.height),
+      new THREE.Vector4(FIRE_PLANE.minX, FIRE_PLANE.minY, FIRE_PLANE.width, FIRE_PLANE.height),
+    );
     this.trick.seq = initial.trick.seq;
     this.enter = initial.entered ? 1 : 0;
   }
@@ -50,6 +59,13 @@ export class GhostRig {
       this.from = { ...this.pose };
       this.trick = { name: c.trick.name, seq: c.trick.seq, start: t };
     }
+    // Some tricks roll into another (waking up turns grumpy)
+    const ended = this.trick.name;
+    const next = ended && TRICK_NEXT[ended];
+    if (next && t - this.trick.start >= TRICK_DURATION[ended]) {
+      this.from = { ...this.pose };
+      this.trick = { name: next, seq: this.trick.seq, start: t };
+    }
     const u = t - this.trick.start;
     const name = this.trick.name;
     if (name && u < TRICK_DURATION[name]) poseAt(name, u, c.reducedMotion, this.target);
@@ -60,7 +76,7 @@ export class GhostRig {
     this.enter += ((c.entered ? 1 : 0) - this.enter) * (1 - Math.exp(-step * 3));
     if (group) {
       const s = 1 + (ENTERED.scale - 1) * this.enter;
-      group.position.set(p.x, p.y + ENTERED.y * this.enter, 0);
+      group.position.set(p.x, p.y + ENTERED.y * this.enter, p.z);
       group.rotation.set(p.rx, p.ry, p.rz);
       group.scale.set(p.sx * s, p.sy * s, p.sz * s);
     }
@@ -103,12 +119,28 @@ export class GhostRig {
     uni.uBlink.value = Math.max(blinkScale * (1 - p.lid * 0.3), 0.08);
     uni.uGlow.value = p.glow;
     uni.uGlowColor.value.copy(this.glowColor);
+    uni.uThird.value = p.third;
+    uni.uShades.value = p.shades;
+    uni.uTooth.value = p.tooth;
+    uni.uGlint.value = p.glint;
+    uni.uFire.value = p.fire;
+    uni.uFireLevel.value = p.fireLevel;
+    uni.uSoot.value = p.soot;
+    uni.uWake.value = p.wake;
     halo.uniforms.uColor.value.copy(this.glowColor);
     halo.uniforms.uStrength.value = p.glow * 0.75;
+
+    const fire = this.fire.uniforms;
+    fire.uTime.value = t;
+    fire.uFire.value = p.fire;
+    fire.uLevel.value = p.fireLevel;
+    fire.uSmoke.value = p.smoke;
+    this.fire.material.visible = p.fire > 0.001 || p.smoke > 0.001;
   }
 
   dispose() {
     this.body.material.dispose();
     this.halo.material.dispose();
+    this.fire.material.dispose();
   }
 }

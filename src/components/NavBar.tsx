@@ -29,7 +29,7 @@ export default function NavBar() {
       animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y: -24 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: shown && pathname === "/" ? 0.35 : 0 }}
       inert={!shown}
-      className="fixed top-0 left-0 z-50 w-full bg-background/85 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md md:px-8"
+      className="fixed top-0 left-0 z-50 w-full bg-background/85 px-4 pt-[var(--nav-top)] backdrop-blur-md md:px-8"
     >
       <nav aria-label="Main" className="border-b border-line/80">
         <ul className="flex items-start justify-between pb-2 md:justify-around md:pb-3">

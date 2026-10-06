@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Rubik_Wet_Paint } from "next/font/google";
+import { Fredoka, Geist, Geist_Mono, Rubik_Wet_Paint } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
@@ -22,6 +22,13 @@ const geistMono = Geist_Mono({
 const dripFont = Rubik_Wet_Paint({
   variable: "--font-rubik-wet-paint",
   weight: "400",
+  subsets: ["latin"],
+});
+
+// Soft, rounded letters for the sleeping ghost's Z's
+const roundFont = Fredoka({
+  variable: "--font-fredoka",
+  weight: "600",
   subsets: ["latin"],
 });
 
@@ -54,7 +61,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${dripFont.variable} antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${dripFont.variable} ${roundFont.variable} antialiased`}
     >
       <body className="min-h-[100dvh] flex flex-col bg-background text-foreground">
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(artistJsonLd)} />

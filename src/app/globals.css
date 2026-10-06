@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* Space above the top menu. Aes asked for it lower; on phones it also clears the notch. */
+  --nav-top: max(1.75rem, calc(env(safe-area-inset-top) + 1rem));
   --background: #ffffff;
   --foreground: #0a0a0a;
   --muted: #f3f3f3;
@@ -17,10 +19,18 @@
   --color-neon-green: #39ff14; /* Toxic green */
   --color-neon-pink: #ff00ff;  /* Glowing pink */
   --color-neon-teal: #00ffff;  /* Electric teal */
+  --color-sleepy-blue: #3b82f6; /* The sleeping ghost's Z's */
 
   --font-sans: var(--font-geist-sans), "Inter", "Roboto", "Outfit", Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-drip: var(--font-rubik-wet-paint), "Impact", sans-serif;
+  --font-round: var(--font-fredoka), "Arial Rounded MT Bold", sans-serif;
+}
+
+@media (width >= 48rem) {
+  :root {
+    --nav-top: 1.75rem;
+  }
 }
 
 html {

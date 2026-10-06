@@ -146,7 +146,7 @@ export default function MiniGhost() {
   const poke = useCallback(() => {
     track("mini_ghost_poke");
     if (wake() === "asleep") {
-      play("grumpy");
+      play("waking");
       say("I was sleeping.");
       return;
     }
@@ -170,9 +170,11 @@ export default function MiniGhost() {
             initial={{ opacity: 0, y: 6, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4 }}
-            className="absolute bottom-[78%] left-[62%] whitespace-nowrap rounded-full border-2 border-foreground bg-background px-2.5 py-1 font-drip text-sm uppercase leading-none md:text-base"
+            className={`absolute bottom-[78%] left-[62%] whitespace-nowrap rounded-full border-2 border-foreground bg-background px-2.5 py-1 text-sm leading-none md:text-base ${
+              line ? "font-drip uppercase" : "font-round text-[var(--color-sleepy-blue)]"
+            }`}
           >
-            {line ?? "z z z"}
+            {line ?? "z Z Z"}
           </motion.p>
         )}
       </AnimatePresence>
