@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import GhostPoster from "./ghost/GhostPoster";
 import PaintWall from "./PaintWall";
 import SpeechBubble from "./SpeechBubble";
-import { CLICKS_PER_CYCLE, TRICK_DURATION, TRICK_ORDER, type TrickName } from "./ghost/tricks";
+import { CLICKS_PER_CYCLE, POP_AT, TALK_LEAD, TRICK_DURATION, TRICK_ORDER, type TrickName } from "./ghost/tricks";
 import type { GhostState } from "./ghost/types";
 import { setEntered, useEntered } from "@/lib/entry";
 import { useGhostEvents } from "@/lib/ghostBus";
@@ -40,8 +40,26 @@ const DOUBLE_TAP_MS = 450;
 /** Captions for tricks whose names don't read well on their own */
 const TRICK_CAPTION: Partial<Record<TrickName, string>> = {
   fire: "too hot",
-  shades: "too cool",
+  attitude: "grin",
+  tornado: "tornado",
+  neon: "color play",
+  jumpscare: "boo!",
 };
+
+/** How long the red POP lettering stays up after the balloon bursts */
+const POP_SHOW_MS = 1200;
+
+/** Bits of ghost that fly off when he pops: [angle in degrees, distance in px, size in px] */
+const POP_BITS: [number, number, number][] = [
+  [-160, 120, 10],
+  [-120, 150, 7],
+  [-75, 140, 12],
+  [-30, 130, 8],
+  [15, 150, 9],
+  [60, 120, 7],
+  [110, 135, 11],
+  [150, 110, 8],
+];
 
 /** After a tap on a phone, the ghost keeps looking there this long before drifting back to center */
 const TOUCH_LOOK_MS = 1600;
@@ -86,6 +104,9 @@ export default function GhostLanding() {
   const [clicks, setClicks] = useState(0);
   const [label, setLabel] = useState<string | null>(null);
   const [talking, setTalking] = useState(false);
+  const [bubble, setBubble] = useState(false);
+  const [popped, setPopped] = useState(0);
+  const fxTimers = useRef<number[]>([]);
   const [painting, setPainting] = useState(false);
   const [paintHint, setPaintHint] = useState(false);
   const [ready, setReady] = useState(false);
@@ -151,7 +172,21 @@ export default function GhostLanding() {
     };
   }, []);
 
-  useEffect(() => () => window.clearTimeout(labelTimer.current), []);
+  const later = useCallback((ms: number, fn: () => void) => {
+    fxTimers.current.push(window.setTimeout(fn, ms));
+  }, []);
+  const clearLater = useCallback(() => {
+    for (const id of fxTimers.current) window.clearTimeout(id);
+    fxTimers.current = [];
+  }, []);
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(labelTimer.current);
+      clearLater();
+    },
+    [clearLater],
+  );
 
   const say = useCallback((text: string | null) => {
     window.clearTimeout(labelTimer.current);
@@ -206,21 +241,33 @@ export default function GhostLanding() {
     }
     const next = clicks + 1;
     setClicks(next);
+    clearLater();
+    setPopped(0);
     if (next >= CLICKS_PER_CYCLE) {
-      say(null);
+      // Out of patience: he shakes with a scowl first, then the bubble opens
+      say("that's it.");
       setTalking(true);
       play("talk");
+      later(TALK_LEAD * 1000, () => {
+        say(null);
+        setBubble(true);
+      });
       track("ghost_tenth_click");
     } else {
       const trick = TRICK_ORDER[next - 1];
       say(TRICK_CAPTION[trick] ?? trick);
       play(trick);
+      if (trick === "pop") {
+        later(POP_AT * 1000, () => setPopped(next));
+        later(POP_AT * 1000 + POP_SHOW_MS, () => setPopped(0));
+      }
       track("ghost_trick", { name: trick });
     }
-  }, [say, clicks, entered, painting, play, talking, wake]);
+  }, [say, clicks, clearLater, entered, later, painting, play, talking, wake]);
 
   const hush = useCallback(() => {
     setTalking(false);
+    setBubble(false);
     setClicks(0);
     say(null);
     play(null);
@@ -332,8 +379,38 @@ export default function GhostLanding() {
         )}
       </AnimatePresence>
 
+      {/* The balloon pop: red POP lettering off to one side and bits of ghost flying out */}
       <AnimatePresence>
-        {talking && <SpeechBubble onDone={hush} />}
+        {popped > 0 && (
+          <motion.div key={popped} aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 z-10">
+            {POP_BITS.map(([angle, dist, size], i) => {
+              const rad = (angle * Math.PI) / 180;
+              return (
+                <motion.span
+                  key={i}
+                  className="absolute block rounded-full bg-[#9a9b9e]"
+                  style={{ width: size, height: size, marginLeft: -size / 2, marginTop: -size / 2 }}
+                  initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                  animate={{ x: Math.cos(rad) * dist, y: Math.sin(rad) * dist, opacity: 0, scale: 0.4 }}
+                  transition={{ duration: reducedMotion ? 0.01 : 0.6, ease: "easeOut" }}
+                />
+              );
+            })}
+            <motion.p
+              className="absolute -mt-[0.6em] whitespace-nowrap font-drip text-[clamp(4rem,18vw,9rem)] leading-none text-[#ff1a1a] [left:min(14dvh,24vw)] [-webkit-text-stroke:3px_var(--color-foreground)]"
+              initial={{ opacity: 0, scale: 0.3, rotate: -18 }}
+              animate={{ opacity: 1, scale: 1, rotate: -8 }}
+              exit={{ opacity: 0, scale: 1.2 }}
+              transition={{ type: "spring", stiffness: 520, damping: 14 }}
+            >
+              POP!
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {bubble && <SpeechBubble onDone={hush} />}
       </AnimatePresence>
 
       <AnimatePresence>{painting && <PaintWall onExit={stopPainting} />}</AnimatePresence>

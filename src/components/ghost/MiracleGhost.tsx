@@ -56,6 +56,7 @@ export default function MiracleGhost({
 
   const [rig] = useState(() => new GhostRig(controls.current, faceMap, haloMap));
   const trickGroup = useRef<THREE.Group>(null);
+  const cloneGroup = useRef<THREE.Group>(null);
   const frames = useRef(0);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -68,7 +69,7 @@ export default function MiracleGhost({
   );
 
   useFrame((state, dt) => {
-    rig.update(controls.current, state.clock.elapsedTime, dt, trickGroup.current);
+    rig.update(controls.current, state.clock.elapsedTime, dt, trickGroup.current, cloneGroup.current);
     // Two frames in, the ghost is on screen and the shaders are compiled
     if (++frames.current === 2) onReady?.();
   });
@@ -96,6 +97,9 @@ export default function MiracleGhost({
         onPointerOver={() => (document.body.style.cursor = "pointer")}
         onPointerOut={() => (document.body.style.cursor = "")}
       />
+      <group ref={cloneGroup} visible={false}>
+        <mesh geometry={geometry} material={rig.cloneBody.material} onClick={handleClick} />
+      </group>
     </group>
   );
 }

@@ -5,7 +5,8 @@ import { EYES, FACE_RECT } from "./modelBake";
  * Aes's ghost as matte grey clay on a white page, like the render in his prototype video.
  * The face is his own polypainted linework, projected from the front (see modelBake.ts).
  * On top of the clay: a grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
- * plus the extras a few tricks paint on: a third eye, sunglasses, a gold tooth, flames and soot, and a groggy waking face.
+ * plus the extras a few tricks paint on: a third eye, sunglasses, a gold tooth, flames and soot, a groggy waking face,
+ * spiral dizzy eyes, and an electric shock.
  * Colors are passed as sRGB triples and written out as-is.
  */
 
@@ -78,6 +79,8 @@ const fragmentShader = /* glsl */ `
   uniform float uFireLevel;
   uniform float uSoot;
   uniform float uWake;
+  uniform float uDizzy;
+  uniform float uShock;
   uniform float uTime;
   uniform vec2 uExtras;
 
@@ -121,6 +124,8 @@ const fragmentShader = /* glsl */ `
   float eyeInk(vec2 f, vec4 eye) {
     vec2 q = f - eye.xy;
     if (abs(q.x) > eye.z * 4.0) return 0.0;
+    // Dizzy: spiral eyes take their place
+    if (uDizzy > 0.5) return 0.0;
     // Behind the sunglasses: the lenses wipe the eyes away as they slide down
     if (uShades > 0.0 && (f.y > mix(1.75, uExtras.y, uShades) - 0.1 || uShades > 0.85)) return 0.0;
     float lidEdge = eye.w * (1.0 - 1.4 * uLid);
@@ -233,6 +238,20 @@ const fragmentShader = /* glsl */ `
     return vec4(col, mask * smoothstep(0.0, 0.05, uShades));
   }
 
+  // Cartoon dizzy eyes: a spinning spiral over each eye
+  float dizzyInk(vec2 f, vec2 eyeR) {
+    if (uDizzy <= 0.0) return 0.0;
+    vec2 q = vec2(abs(f.x) - abs(eyeR.x), f.y - 0.62);
+    float r = length(q);
+    float radius = 0.14;
+    if (r > radius + 0.02) return 0.0;
+    // Spin opposite ways in each eye
+    float a = atan(q.y, q.x) * sign(f.x) + uTime * 9.0;
+    float turns = r / 0.038 - a / 6.2832;
+    float line = (0.5 - abs(fract(turns) - 0.5)) * 0.038;
+    return stroke(line, 0.01) * (1.0 - smoothstep(radius - 0.01, radius, r)) * smoothstep(0.3, 0.6, uDizzy);
+  }
+
   // The groggy waking face, from Aes's sketch: squinting V eyes and worried brows lifted high
   float wakeInk(vec2 f, vec2 eyeR) {
     if (uWake <= 0.0) return 0.0;
@@ -287,12 +306,19 @@ const fragmentShader = /* glsl */ `
       color = mix(color, flame * (0.85 + 0.25 * wrap), burn * 0.7);
     }
 
+    // Electrocuted: he flickers jet black, like a cartoon zap
+    if (uShock > 0.0) {
+      float flicker = 0.8 + 0.2 * step(0.0, sin(uTime * 70.0));
+      color = mix(color, vec3(0.02) + vec3(0.9, 0.8, 0.1) * fresnel * 0.6, uShock * flicker);
+    }
+
     // Face: Aes's painted eyes and smile, in ink, plus whatever the trick adds
     if (vFront > 0.01) {
       vec2 f = vShape - uLook;
       float ink = max(mouthInk(f), max(eyeInk(f, uEyeL), eyeInk(f, uEyeR)));
-      ink = max(ink, wakeInk(f, uEyeR.xy)) * vFront;
-      vec3 inkColor = mix(vec3(0.05), vec3(1.0), uGlow * 0.9);
+      ink = max(ink, max(wakeInk(f, uEyeR.xy), dizzyInk(f, uEyeR.xy))) * vFront;
+      // Ink turns white on a glowing or blacked-out body
+      vec3 inkColor = mix(vec3(0.05), vec3(1.0), max(uGlow * 0.9, uShock));
       color = mix(color, inkColor, ink);
 
       if (uTooth > 0.0) {
@@ -338,6 +364,8 @@ export type GhostUniforms = {
   uFireLevel: { value: number };
   uSoot: { value: number };
   uWake: { value: number };
+  uDizzy: { value: number };
+  uShock: { value: number };
   uExtras: { value: THREE.Vector2 };
 };
 
@@ -373,6 +401,8 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     uFireLevel: { value: 0 },
     uSoot: { value: 0 },
     uWake: { value: 0 },
+    uDizzy: { value: 0 },
+    uShock: { value: 0 },
     uExtras: { value: new THREE.Vector2(EXTRAS.thirdEyeY, EXTRAS.shadesY) },
   };
   const material = new THREE.ShaderMaterial({
@@ -430,6 +460,7 @@ const fireFragment = /* glsl */ `
   uniform float uFire;
   uniform float uLevel;
   uniform float uSmoke;
+  uniform float uZap;
   varying vec2 vUv;
 
   float hash(vec2 p) {
@@ -486,11 +517,23 @@ const fireFragment = /* glsl */ `
       outColor = vec4(mix(outColor.rgb, vec3(0.55), a), max(outColor.a, a));
     }
 
+    if (uZap > 0.0) {
+      // Electric arcs: jagged yellow lines crackling just outside his outline, jumping to a new shape 20 times a second
+      float b = body(p);
+      float band = smoothstep(0.05, 0.3, b) * (1.0 - smoothstep(0.6, 0.9, b));
+      float tick = floor(uTime * 20.0);
+      float n = noise(p * 2.6 + tick * 7.13) + 0.35 * noise(p * 9.0 - tick * 3.1);
+      float line = 1.0 - smoothstep(0.02, 0.06, abs(n - 0.68));
+      float a = line * band * uZap;
+      vec3 col = mix(vec3(1.0, 0.85, 0.0), vec3(1.0, 1.0, 0.75), smoothstep(0.6, 1.0, line));
+      outColor = vec4(mix(outColor.rgb, col, a), max(outColor.a, a));
+    }
+
     gl_FragColor = outColor;
   }
 `;
 
-/** The flames and smoke for the "fire" trick, drawn on a plane behind the ghost so they lick out around him */
+/** The flames and smoke for the "fire" trick (and the sparks for "zapped"), drawn on a plane behind the ghost so they lick out around him */
 export function createFireMaterial(map: THREE.Texture, mapRect: THREE.Vector4, plane: THREE.Vector4) {
   const uniforms = {
     uMap: { value: map },
@@ -500,6 +543,7 @@ export function createFireMaterial(map: THREE.Texture, mapRect: THREE.Vector4, p
     uFire: { value: 0 },
     uLevel: { value: 0 },
     uSmoke: { value: 0 },
+    uZap: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,

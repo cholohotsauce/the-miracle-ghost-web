@@ -14,7 +14,7 @@ import { useIdleMood, type Mood } from "@/lib/useIdleMood";
 const GhostStage = dynamic(() => import("@/components/ghost/GhostStage"), { ssr: false });
 
 /** Tricks small enough to stay inside the mini ghost's box */
-const POKE_TRICKS: TrickName[] = ["spin", "squash", "grin pop", "boing", "boo", "neon", "annoyed shake", "backflip"];
+const POKE_TRICKS: TrickName[] = ["spin", "squash", "grin pop", "boing", "boo", "neon", "annoyed shake", "backflip", "attitude", "tornado", "zapped"];
 
 const SAY_MS = 2_400;
 const clamp = (v: number) => Math.max(-1, Math.min(1, v));

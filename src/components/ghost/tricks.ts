@@ -9,14 +9,19 @@ export type TrickName =
   | "spin"
   | "squash"
   | "annoyed shake"
-  | "peek"
   | "grin pop"
   | "backflip"
   | "boing"
   | "boo"
   | "neon"
   | "fire"
-  | "shades"
+  | "attitude"
+  | "tornado"
+  | "clone"
+  | "pop"
+  | "dance"
+  | "jumpscare"
+  | "zapped"
   | "talk"
   // Idle moods: they play when nobody touches the ghost for a while
   | "bored"
@@ -62,6 +67,13 @@ export type Pose = {
   smoke: number;
   /** The groggy waking face: squinting V eyes and worried, raised brows */
   wake: number;
+  /** Spinning spiral eyes after the tornado */
+  dizzy: number;
+  /** How far the clone has split off (0 is merged), and how far the two have turned to look at each other */
+  clone: number;
+  cloneLook: number;
+  /** Electrocuted: black body, yellow sparks crackling around him */
+  shock: number;
 };
 
 export const REST: Readonly<Pose> = {
@@ -89,6 +101,10 @@ export const REST: Readonly<Pose> = {
   soot: 0,
   smoke: 0,
   wake: 0,
+  dizzy: 0,
+  clone: 0,
+  cloneLook: 0,
+  shock: 0,
 };
 
 /** Seconds each trick runs. `talk` holds until the speech bubble closes. */
@@ -97,14 +113,19 @@ export const TRICK_DURATION: Record<TrickName, number> = {
   spin: 1.1,
   squash: 1.2,
   "annoyed shake": 1.7,
-  peek: 2.6,
   "grin pop": 1.5,
   backflip: 1.3,
   boing: 1.9,
   boo: 2.0,
   neon: 3.8,
   fire: 4.8,
-  shades: 3.8,
+  attitude: 2.3,
+  tornado: 3.8,
+  clone: 4.0,
+  pop: 2.8,
+  dance: 4.6,
+  jumpscare: 2.5,
+  zapped: 2.8,
   talk: Infinity,
   bored: 9,
   yawn: 2.6,
@@ -118,18 +139,31 @@ export const TRICK_NEXT: Partial<Record<TrickName, TrickName>> = {
   waking: "grumpy",
 };
 
-/** Clicks 1 to 9 after entry play these in order. Click 10 is the speech bubble. */
+/**
+ * Clicks 1 to 9 after entry play these in order: Aes's sequence of 2026-10-07.
+ * Click 10 is his fed-up reaction and the speech bubble ("talk").
+ * "fire" is built but not in his list yet.
+ */
 export const TRICK_ORDER: TrickName[] = [
-  "spin",
-  "annoyed shake",
-  "peek",
-  "shades",
   "backflip",
-  "boing",
-  "boo",
-  "fire",
+  "attitude",
+  "tornado",
+  "clone",
+  "pop",
   "neon",
+  "dance",
+  "jumpscare",
+  "zapped",
 ];
+
+/** How far apart the clone and the ghost end up, in world units */
+export const CLONE_GAP = 0.95;
+
+/** Seconds of fed-up shaking on the tenth click before the speech bubble opens */
+export const TALK_LEAD = 0.9;
+
+/** When the "pop" trick bursts, in seconds, so the page can show the POP lettering */
+export const POP_AT = 1.0;
 
 /** The tenth click */
 export const CLICKS_PER_CYCLE = TRICK_ORDER.length + 1;
@@ -192,16 +226,6 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.rz = 0.08 * Math.sin(38 * u + 0.6) * shake;
       break;
     }
-    case "peek": {
-      // Ducks off to the left edge, peeks back at you, then slides home
-      const away = Math.min(easeInOutCubic(u / 0.5), easeInOutCubic((d - u) / 0.6));
-      out.x = -1.55 * away;
-      out.rz = 0.42 * away;
-      out.ry = 0.45 * away;
-      out.lookX = 0.09 * away;
-      out.grin = 0.5 * smooth((u - 0.9) / 0.3) * away;
-      break;
-    }
     case "grin pop": {
       out.grin = envelope(u, 0.12, 0.45, d);
       out.lid = 0.4 * out.grin;
@@ -236,9 +260,12 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       break;
     }
     case "neon": {
-      out.glow = envelope(u, 0.3, 0.7, d);
-      out.glowT = u;
-      out.rz = 0.05 * Math.sin(u * 5) * out.glow;
+      // Color play: races through the neon colors, strobing and pulsing to a beat
+      const on = envelope(u, 0.25, 0.6, d);
+      out.glow = on * (0.8 + 0.2 * Math.sin(u * 19));
+      out.glowT = u * 2.6;
+      out.rz = 0.06 * Math.sin(u * 7) * on;
+      squashPose(out, 0.05 * Math.sin(u * 12) * on);
       // Once the colors are going, a third eye splits open on his forehead, blinks once, and shuts again
       const blinkAt = 2.2;
       const blink = 1 - Math.max(0, Math.sin(Math.PI * clamp01((u - blinkAt) / 0.22)));
@@ -265,21 +292,132 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.lid = 0.65 * dazed;
       break;
     }
-    case "shades": {
-      // Sunglasses slide down, he leans right up to the glass, flashes a gold tooth, and backs off
-      out.shades = envelope(u, 0.45, 0.45, d);
-      const near = Math.min(easeInOutCubic((u - 0.35) / 0.75), easeInOutCubic((d - 0.35 - u) / 0.75));
-      out.z = 3.4 * near;
-      out.y = -0.5 * near;
-      out.rz = 0.1 * near;
-      out.grin = smooth((u - 1.0) / 0.25) * smooth((d - 0.55 - u) / 0.3);
-      out.lid = 0.3 * out.grin;
+    case "attitude": {
+      // Grins and leans off to one side with attitude, then straightens up
+      out.grin = envelope(u, 0.2, 0.5, d);
+      const lean = envelope(u - 0.15, 0.35, 0.55, d - 0.15);
+      out.lid = 0.45 * lean;
+      out.rz = -0.3 * lean;
+      out.x = 0.3 * lean;
+      out.ry = -0.3 * lean;
+      out.lookX = -0.05 * lean;
+      out.y = 0.06 * Math.sin(Math.PI * clamp01(u / 0.4));
+      break;
+    }
+    case "tornado": {
+      // Spins like a tornado, stretching tall, then stops and wobbles around dizzy with spiral eyes
+      const spinEnd = 1.5;
+      const spin = easeInOutCubic(u / spinEnd);
+      out.ry = TAU * 7 * spin;
+      const whirl = Math.sin(Math.PI * clamp01(u / spinEnd));
+      squashPose(out, 0.16 * whirl);
+      out.y += 0.25 * whirl;
+      const dizzy = envelope(u - spinEnd, 0.1, 0.5, d - spinEnd);
+      out.dizzy = dizzy;
+      const w = u - spinEnd;
+      out.rz += 0.14 * Math.sin(w * 5) * dizzy;
+      out.rx = 0.1 * Math.cos(w * 5) * dizzy;
+      out.x = 0.12 * Math.sin(w * 5 + 0.8) * dizzy;
+      out.frown = 0.6 * dizzy;
+      break;
+    }
+    case "clone": {
+      // A clone splits off; they turn and look at each other, look back out at you, then merge again
+      const sep = Math.min(easeInOutCubic((u - 0.1) / 0.6), easeInOutCubic((d - 0.15 - u) / 0.6));
+      out.clone = sep;
+      out.x = -CLONE_GAP * sep;
+      out.sx = out.sy = out.sz = 1 - 0.25 * sep;
+      const look = envelope(u - 0.85, 0.25, 0.25, 1.25);
+      out.cloneLook = look;
+      out.lookX = 0.09 * look;
+      out.ry = 0.4 * look;
+      out.grin = 0.5 * look;
+      break;
+    }
+    case "pop": {
+      // Inflates 30% like a balloon, trembling, then bursts and pops back a moment later
+      if (u < POP_AT) {
+        const blow = smooth(u / (POP_AT - 0.1));
+        const s = 1 + 0.3 * blow + 0.025 * Math.sin(u * 45) * blow;
+        out.sx = out.sz = s;
+        out.sy = s * (1 - 0.04 * blow);
+        out.lid = 0.5 * blow;
+        out.frown = 0.4 * blow;
+      } else {
+        const back = POP_AT + 0.85;
+        const scale = u < back ? 0 : smooth((u - back) / 0.2) + spring(u - back, 0.25, 5, 14);
+        out.sx = out.sy = out.sz = Math.max(scale, 0.0001);
+        out.grin = u < back ? 0 : 0.6 * envelope(u - back, 0.15, 0.4, d - back);
+      }
+      break;
+    }
+    case "dance": {
+      // Puts his sunglasses on and grooves: head rolling in a circle, body swaying side to side.
+      // To finish he leans in and flashes the gold tooth.
+      out.shades = envelope(u, 0.4, 0.45, d);
+      const groove = envelope(u - 0.4, 0.3, 0.5, 3.0);
+      const beat = TAU * 1.6;
+      out.rx = 0.13 * Math.sin(beat * u) * groove;
+      out.rz = 0.13 * Math.cos(beat * u) * groove;
+      out.x = 0.38 * Math.sin((beat / 2) * u) * groove;
+      out.y = 0.09 * Math.abs(Math.sin(beat * u)) * groove;
+      out.grin = 0.45 * groove;
+      const flash = envelope(u - 3.3, 0.3, 0.35, d - 3.45);
+      out.z = 2.2 * flash;
+      out.y -= 0.35 * flash;
+      out.grin = Math.max(out.grin, flash);
       out.tooth = out.grin;
-      out.glint = Math.max(0, Math.sin(Math.PI * clamp01((u - 1.45) / 0.55)));
+      out.lid = 0.3 * out.grin;
+      out.glint = Math.max(0, Math.sin(Math.PI * clamp01((u - 3.6) / 0.5)));
+      break;
+    }
+    case "jumpscare": {
+      // Vanishes, then slams back huge and right up against the screen, mouth wide open
+      const gone = 0.75;
+      if (u < gone) {
+        const shrink = 1 - smooth(u / 0.25);
+        out.sx = out.sy = out.sz = Math.max(shrink, 0.0001);
+      } else {
+        const near = Math.min(1, easeInOutCubic((d - 0.15 - u) / 0.9));
+        out.z = 5.2 * near;
+        out.y = -0.75 * near;
+        const s = 1 + 0.35 * near + spring(u - gone, 0.15, 7, 20);
+        out.sx = out.sy = out.sz = s;
+        out.grin = near;
+        out.x = 0.03 * Math.sin(u * 60) * near;
+      }
+      break;
+    }
+    case "zapped": {
+      // A cartoon electric shock: goes black, sparks crackle yellow around him, shakes like mad, then a dazed fizzle
+      const zapEnd = 1.8;
+      const shock = envelope(u, 0.04, 0.25, zapEnd);
+      out.shock = shock;
+      out.frown = shock;
+      out.grin = 0.85 * shock;
+      squashPose(out, 0.14 * shock);
+      out.x = 0.13 * Math.sin(u * 71) * shock;
+      out.y += 0.06 * Math.sin(u * 53) * shock;
+      out.rz = 0.09 * Math.sin(u * 61 + 1) * shock;
+      const after = envelope(u - zapEnd + 0.2, 0.15, 0.5, d - zapEnd + 0.2);
+      out.soot = 0.7 * after;
+      out.smoke = 0.6 * after;
+      out.lid = Math.max(out.lid, 0.6 * after);
       break;
     }
     case "talk": {
-      // Shrinks below the speech bubble and leans in, eyes half shut, mouth flapping while it barks the question
+      // Fed up: puffs up and shakes with a scowl. Then shrinks below the speech bubble and leans in,
+      // eyes half shut, mouth flapping while it barks the line.
+      if (u < TALK_LEAD) {
+        const e = envelope(u, 0.1, 0.25, TALK_LEAD);
+        out.frown = e;
+        out.lid = 0.7 * e;
+        squashPose(out, spring(u, 0.18, 5, 15) * e);
+        out.x = 0.1 * Math.sin(u * 45) * e;
+        out.rz = 0.06 * Math.sin(u * 45 + 0.5) * e;
+        break;
+      }
+      u -= TALK_LEAD;
       const lean = smooth(u / 0.4);
       out.rx = 0.12 * lean;
       out.y = -1.05 * lean;
@@ -350,8 +488,8 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
   }
 
   if (reducedMotion) {
-    // Keep the face, glow, and the boo's vanish; drop the movement
-    const keepScale = name === "boo" ? out.sx : 1;
+    // Keep the face, glow, and the vanishing tricks' scale; drop the movement
+    const keepScale = name === "boo" || name === "pop" ? out.sx : 1;
     Object.assign(out, { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: keepScale, sy: keepScale, sz: keepScale, lookX: 0 });
   }
   return out;
