@@ -72,7 +72,7 @@ export default function ShowsPage() {
   }));
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-24 md:pt-32 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-28 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       {eventsLd.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(eventsLd)} />
       )}

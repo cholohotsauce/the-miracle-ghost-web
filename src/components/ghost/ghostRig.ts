@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
+import { createFireMaterial, createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
 import { HALO_RECT } from "./modelBake";
-import { blendPose, poseAt, REST, TRICK_DURATION, type Pose, type TrickName } from "./tricks";
+import { blendPose, CLONE_GAP, poseAt, REST, TRICK_DURATION, TRICK_NEXT, type Pose, type TrickName } from "./tricks";
 import type { GhostState } from "./types";
 
 export const HALO_SIZE = {
@@ -10,8 +10,12 @@ export const HALO_SIZE = {
   centerY: (HALO_RECT.maxY + HALO_RECT.minY) / 2,
 };
 
+/** The plane behind the ghost that carries the fire trick's flames: room above his head for them to rise */
+export const FIRE_PLANE = { minX: -2.4, minY: -1.9, width: 4.8, height: 5.2, z: -0.75 };
+
 /** The neon trick cycles through the brand accents */
-const NEON = ["#39ff14", "#ff00ff", "#00ffff"].map((hex) => hexToVec3(hex));
+const NEON = ["#39ff14", "#ff00ff", "#00ffff", "#ffe600", "#8a2bff", "#ff5e00"].map((hex) => hexToVec3(hex));
+const ZAP = hexToVec3("#ffe600");
 const NEON_STEP = 0.9;
 
 /** After entry the ghost drops a little and shrinks, making room for the menu */
@@ -24,6 +28,9 @@ const BLEND_IN = 0.18;
 export class GhostRig {
   readonly body: ReturnType<typeof createGhostMaterial>;
   readonly halo: ReturnType<typeof createHaloMaterial>;
+  readonly fire: ReturnType<typeof createFireMaterial>;
+  /** The clone's own copy of the body material, so it can look the other way */
+  readonly cloneBody: ReturnType<typeof createGhostMaterial>;
 
   private trick: { name: TrickName | null; seq: number; start: number } = { name: null, seq: 0, start: 0 };
   private from: Pose = { ...REST };
@@ -36,11 +43,17 @@ export class GhostRig {
   constructor(initial: GhostState, faceMap: THREE.Texture, haloMap: THREE.Texture) {
     this.body = createGhostMaterial(faceMap);
     this.halo = createHaloMaterial(haloMap);
+    this.cloneBody = createGhostMaterial(faceMap);
+    this.fire = createFireMaterial(
+      haloMap,
+      new THREE.Vector4(HALO_RECT.minX, HALO_RECT.minY, HALO_SIZE.width, HALO_SIZE.height),
+      new THREE.Vector4(FIRE_PLANE.minX, FIRE_PLANE.minY, FIRE_PLANE.width, FIRE_PLANE.height),
+    );
     this.trick.seq = initial.trick.seq;
     this.enter = initial.entered ? 1 : 0;
   }
 
-  update(c: GhostState, t: number, dt: number, group: THREE.Object3D | null) {
+  update(c: GhostState, t: number, dt: number, group: THREE.Object3D | null, clone: THREE.Object3D | null = null) {
     const step = Math.min(dt, 1 / 20);
     const { body, halo } = this;
 
@@ -49,6 +62,13 @@ export class GhostRig {
     if (c.trick.seq !== this.trick.seq) {
       this.from = { ...this.pose };
       this.trick = { name: c.trick.name, seq: c.trick.seq, start: t };
+    }
+    // Some tricks roll into another (waking up turns grumpy)
+    const ended = this.trick.name;
+    const next = ended && TRICK_NEXT[ended];
+    if (next && t - this.trick.start >= TRICK_DURATION[ended]) {
+      this.from = { ...this.pose };
+      this.trick = { name: next, seq: this.trick.seq, start: t };
     }
     const u = t - this.trick.start;
     const name = this.trick.name;
@@ -60,7 +80,7 @@ export class GhostRig {
     this.enter += ((c.entered ? 1 : 0) - this.enter) * (1 - Math.exp(-step * 3));
     if (group) {
       const s = 1 + (ENTERED.scale - 1) * this.enter;
-      group.position.set(p.x, p.y + ENTERED.y * this.enter, 0);
+      group.position.set(p.x, p.y + ENTERED.y * this.enter, p.z);
       group.rotation.set(p.rx, p.ry, p.rz);
       group.scale.set(p.sx * s, p.sy * s, p.sz * s);
     }
@@ -103,12 +123,53 @@ export class GhostRig {
     uni.uBlink.value = Math.max(blinkScale * (1 - p.lid * 0.3), 0.08);
     uni.uGlow.value = p.glow;
     uni.uGlowColor.value.copy(this.glowColor);
-    halo.uniforms.uColor.value.copy(this.glowColor);
-    halo.uniforms.uStrength.value = p.glow * 0.75;
+    uni.uThird.value = p.third;
+    uni.uShades.value = p.shades;
+    uni.uTooth.value = p.tooth;
+    uni.uGlint.value = p.glint;
+    uni.uFire.value = p.fire;
+    uni.uFireLevel.value = p.fireLevel;
+    uni.uSoot.value = p.soot;
+    uni.uWake.value = p.wake;
+    uni.uDizzy.value = p.dizzy;
+    uni.uShock.value = p.shock;
+    // The halo glows in the neon colors, or yellow while he is being zapped
+    halo.uniforms.uColor.value.copy(p.shock > p.glow ? ZAP : this.glowColor);
+    halo.uniforms.uStrength.value = Math.max(p.glow, p.shock) * 0.75;
+
+    const fire = this.fire.uniforms;
+    fire.uTime.value = t;
+    fire.uFire.value = p.fire;
+    fire.uLevel.value = p.fireLevel;
+    fire.uSmoke.value = p.smoke;
+    fire.uZap.value = p.shock;
+    this.fire.material.visible = p.fire > 0.001 || p.smoke > 0.001 || p.shock > 0.001;
+
+    // The clone rides inside the ghost's group: offset so the two end up mirrored either side of center,
+    // turned to face each other, with the same face except it looks the other way
+    if (clone) {
+      clone.visible = p.clone > 0.001;
+      if (clone.visible) {
+        const parentScale = group ? group.scale.x : 1;
+        clone.position.x = (2 * CLONE_GAP * p.clone) / Math.max(parentScale, 0.0001);
+        clone.rotation.y = -0.8 * p.cloneLook;
+        const cu = this.cloneBody.uniforms as Record<string, { value: unknown }>;
+        for (const [key, u] of Object.entries(uni as Record<string, { value: unknown }>)) {
+          const v = u.value;
+          if (typeof v === "number" || v instanceof THREE.Texture) cu[key].value = v;
+          else (cu[key].value as THREE.Vector2 | THREE.Vector3 | THREE.Vector4).copy(v as never);
+        }
+        this.cloneBody.uniforms.uLook.value.x = look.x - 2 * p.lookX;
+        // Its body sways a beat out of step with the original
+        this.cloneBody.uniforms.uTime.value = t + 0.37;
+      }
+    }
   }
 
   dispose() {
     this.body.material.dispose();
     this.halo.material.dispose();
+    this.fire.material.dispose();
+    this.cloneBody.material.dispose();
   }
 }

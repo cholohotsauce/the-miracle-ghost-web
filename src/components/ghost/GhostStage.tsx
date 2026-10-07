@@ -73,7 +73,8 @@ export default function GhostStage({
           enabled={!reducedMotion}
           speed={1.5}
           rotationIntensity={0.2}
-          floatIntensity={0.55}
+          // Aes asked for 15% more bob than the original 0.55
+          floatIntensity={0.6325}
           floatingRange={[-0.08, 0.08]}
         >
           <Suspense fallback={null}>

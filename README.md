@@ -23,7 +23,7 @@ npm run lint
 | Mini ghost on every other page | `src/components/site/MiniGhost.tsx` |
 | Spray-paint page changes | `src/components/site/PageTransition.tsx`, `TransitionLink.tsx` |
 | "Come back" browser tab | `src/components/site/TabHaunt.tsx` |
-| Paint-the-wall easter egg (double-tap the wall on Home) | `src/components/PaintWall.tsx` |
+| Paint-the-wall easter egg (spray can in the corner on Home, or double-tap the wall) | `src/components/PaintWall.tsx` |
 | "Told me off" share card | `src/lib/shareCard.ts` |
 | Shop grid and product pages | `src/app/shop/`, `src/components/shop/`, `src/lib/shopify.ts` |
 | Drop dates, editions, next-drop teaser | `src/content/drops.ts` |

@@ -14,7 +14,7 @@ import { useIdleMood, type Mood } from "@/lib/useIdleMood";
 const GhostStage = dynamic(() => import("@/components/ghost/GhostStage"), { ssr: false });
 
 /** Tricks small enough to stay inside the mini ghost's box */
-const POKE_TRICKS: TrickName[] = ["spin", "squash", "grin pop", "boing", "boo", "neon", "annoyed shake", "backflip"];
+const POKE_TRICKS: TrickName[] = ["spin", "squash", "grin pop", "boing", "boo", "neon", "annoyed shake", "backflip", "attitude", "tornado", "zapped"];
 
 const SAY_MS = 2_400;
 const clamp = (v: number) => Math.max(-1, Math.min(1, v));
@@ -146,7 +146,7 @@ export default function MiniGhost() {
   const poke = useCallback(() => {
     track("mini_ghost_poke");
     if (wake() === "asleep") {
-      play("grumpy");
+      play("waking");
       say("I was sleeping.");
       return;
     }
@@ -170,9 +170,11 @@ export default function MiniGhost() {
             initial={{ opacity: 0, y: 6, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4 }}
-            className="absolute bottom-[78%] left-[62%] whitespace-nowrap rounded-full border-2 border-foreground bg-background px-2.5 py-1 font-drip text-sm uppercase leading-none md:text-base"
+            className={`absolute bottom-[78%] left-[62%] whitespace-nowrap rounded-full border-2 border-foreground bg-background px-2.5 py-1 text-sm leading-none md:text-base ${
+              line ? "font-drip uppercase" : "font-round text-[var(--color-sleepy-blue)]"
+            }`}
           >
-            {line ?? "z z z"}
+            {line ?? "z Z Z"}
           </motion.p>
         )}
       </AnimatePresence>

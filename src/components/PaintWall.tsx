@@ -24,29 +24,39 @@ const NOZZLE = 22;
 /** Distance between spray puffs along a stroke */
 const STEP = 5;
 
-type Puff = { x: number; y: number; color: number; born: number };
+type Puff = { x: number; y: number; color: number; variant: number; born: number };
 type Drip = { x: number; y: number; len: number; max: number; w: number; color: number; born: number };
 
-/** One soft spray puff per color, with overspray specks, drawn once and stamped many times */
+/** Sprite variants per color, picked at random so the stroke never looks stamped */
+const VARIANTS = 3;
+
+/**
+ * One spray puff, drawn once and stamped many times along a stroke. Like a real can:
+ * a dense, solid core, a soft feathered edge, and fine overspray mist scattered well past it.
+ */
 function makeSprite(color: string, dpr: number) {
   const size = Math.ceil(NOZZLE * 2 * dpr);
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const ctx = c.getContext("2d")!;
   const r = size / 2;
-  const g = ctx.createRadialGradient(r, r, 0, r, r, r * 0.7);
+  const g = ctx.createRadialGradient(r, r, 0, r, r, r * 0.62);
   g.addColorStop(0, color);
+  g.addColorStop(0.45, color);
   g.addColorStop(1, "transparent");
-  ctx.globalAlpha = 0.5;
+  ctx.globalAlpha = 0.28;
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-  ctx.globalAlpha = 0.8;
+  ctx.beginPath();
+  ctx.arc(r, r, r * 0.62, 0, Math.PI * 2);
+  ctx.fill();
+  // Overspray: lots of tiny droplets, thicker near the core, a few flying wide
   ctx.fillStyle = color;
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 140; i++) {
     const a = Math.random() * Math.PI * 2;
-    const d = Math.sqrt(Math.random()) * r * 0.95;
+    const d = Math.abs(Math.random() + Math.random() + Math.random() - 1.5) / 1.5 * r * 0.98;
+    ctx.globalAlpha = 0.25 + Math.random() * 0.55;
     ctx.beginPath();
-    ctx.arc(r + Math.cos(a) * d, r + Math.sin(a) * d, (0.4 + Math.random() * 0.9) * dpr, 0, Math.PI * 2);
+    ctx.arc(r + Math.cos(a) * d, r + Math.sin(a) * d, (0.25 + Math.random() * 0.6) * dpr, 0, Math.PI * 2);
     ctx.fill();
   }
   return c;
@@ -64,7 +74,14 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const sprites = COLORS.map((c) => makeSprite(c.value, dpr));
+    const sprites = COLORS.map((c) => Array.from({ length: VARIANTS }, () => makeSprite(c.value, dpr)));
+    const puff = (x: number, y: number, color: number, born: number): Puff => ({
+      x: x + (Math.random() - 0.5) * 2.5,
+      y: y + (Math.random() - 0.5) * 2.5,
+      color,
+      variant: Math.floor(Math.random() * VARIANTS),
+      born,
+    });
     const puffs: Puff[] = [];
     const drips: Drip[] = [];
     let last: { x: number; y: number } | null = null;
@@ -84,11 +101,11 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
         const dist = Math.hypot(x - last.x, y - last.y);
         const n = Math.min(Math.floor(dist / STEP), 60);
         for (let i = 1; i <= n; i++) {
-          puffs.push({ x: last.x + ((x - last.x) * i) / n, y: last.y + ((y - last.y) * i) / n, color: colorRef.current, born: now });
+          puffs.push(puff(last.x + ((x - last.x) * i) / n, last.y + ((y - last.y) * i) / n, colorRef.current, now));
         }
         still = dist < 2 ? still + 1 : 0;
       }
-      puffs.push({ x, y, color: colorRef.current, born: now });
+      puffs.push(puff(x, y, colorRef.current, now));
       if (puffs.length > 4000) puffs.splice(0, puffs.length - 4000);
       // Holding the can in one spot builds up paint until it runs
       if (still > 8 || Math.random() < 0.012) {
@@ -131,7 +148,7 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
       while (puffs.length && now - puffs[0].born > LIFE) puffs.shift();
       for (const p of puffs) {
         ctx.globalAlpha = alphaAt(now - p.born);
-        const s = sprites[p.color];
+        const s = sprites[p.color][p.variant];
         ctx.drawImage(s, p.x * dpr - s.width / 2, p.y * dpr - s.height / 2);
       }
       for (let i = drips.length - 1; i >= 0; i--) {
@@ -179,7 +196,7 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
       className="absolute inset-0 z-30"
     >
       <canvas ref={canvasRef} aria-label="Spray paint on the wall" className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+4.5rem)] text-center font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60 md:top-28">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--nav-top)+4.5rem)] text-center font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60 md:top-32">
         Spray the wall. It fades.
       </div>
       <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] flex items-center justify-center gap-3 md:bottom-8">

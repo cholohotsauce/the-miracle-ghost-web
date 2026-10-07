@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
-import { GHOST_QUESTION, GHOST_SENT, MAX_CONTACT, MAX_MESSAGE } from "@/lib/ghostMessage";
+import { GHOST_PROMPT, GHOST_QUESTION, GHOST_SENT, MAX_CONTACT, MAX_MESSAGE } from "@/lib/ghostMessage";
 import { drawInsultCard, shareInsultCard } from "@/lib/shareCard";
 import { track } from "@/lib/stats";
 
@@ -87,7 +87,7 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
       transition={{ type: "spring", stiffness: 380, damping: 22 }}
       style={{ transformOrigin: "50% 100%" }}
       data-ui
-      className="absolute inset-x-0 mx-auto top-[calc(max(0.75rem,env(safe-area-inset-top))+4.25rem)] z-20 w-[min(23rem,calc(100vw-2rem))] md:top-28"
+      className="absolute inset-x-0 mx-auto top-[calc(var(--nav-top)+4.25rem)] z-20 w-[min(23rem,calc(100vw-2rem))] md:top-32"
     >
       <div className="relative rounded-[1.75rem] border-[3px] border-foreground bg-background px-5 pb-5 pt-4 shadow-[6px_6px_0_var(--color-foreground)]">
         {status === "sent" ? (
@@ -131,7 +131,7 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
               maxLength={MAX_MESSAGE}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Spit it out. Aes reads these."
+              placeholder={GHOST_PROMPT}
               className="resize-none rounded-xl border-2 border-foreground bg-muted px-3 py-2 text-base outline-none focus:bg-background focus:shadow-[0_0_0_3px_var(--color-neon-green)]"
             />
             <label className="sr-only" htmlFor="ghost-contact">
