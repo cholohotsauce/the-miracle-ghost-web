@@ -18,7 +18,8 @@ export type TrickName =
   | "attitude"
   | "tornado"
   | "clone"
-  | "pop"
+  | "swarm"
+  | "tv"
   | "dance"
   | "jumpscare"
   | "zapped"
@@ -53,8 +54,6 @@ export type Pose = {
   glowT: number;
   /** Extra gaze offset, in face units */
   lookX: number;
-  /** A third eye on the forehead, opening sideways (0 is a shut slit) */
-  third: number;
   /** Sunglasses sliding down onto the face */
   shades: number;
   /** The gold tooth in the open mouth, and its sparkle */
@@ -65,13 +64,21 @@ export type Pose = {
   fireLevel: number;
   soot: number;
   smoke: number;
-  /** The groggy waking face: squinting V eyes and worried, raised brows */
+  /** The groggy waking face's squinting V eyes */
   wake: number;
+  /** Worried, raised brows (waking up, and sad after the zap) */
+  brow: number;
   /** Spinning spiral eyes after the tornado */
   dizzy: number;
-  /** How far the clone has split off (0 is merged), and how far the two have turned to look at each other */
+  /** How far the clone has split off (0 is merged), its size, and how far the two have turned to look at each other */
   clone: number;
+  cloneScale: number;
   cloneLook: number;
+  /** How far the swarm of tiny ghosts has scattered (0 is gathered back into him) */
+  swarm: number;
+  /** TV static over his body, and the old-TV switch-off squeezing him to a line */
+  tv: number;
+  crt: number;
   /** Electrocuted: black body, yellow sparks crackling around him */
   shock: number;
 };
@@ -92,7 +99,6 @@ export const REST: Readonly<Pose> = {
   glow: 0,
   glowT: 0,
   lookX: 0,
-  third: 0,
   shades: 0,
   tooth: 0,
   glint: 0,
@@ -101,9 +107,14 @@ export const REST: Readonly<Pose> = {
   soot: 0,
   smoke: 0,
   wake: 0,
+  brow: 0,
   dizzy: 0,
   clone: 0,
+  cloneScale: 0,
   cloneLook: 0,
+  swarm: 0,
+  tv: 0,
+  crt: 0,
   shock: 0,
 };
 
@@ -122,10 +133,11 @@ export const TRICK_DURATION: Record<TrickName, number> = {
   attitude: 2.3,
   tornado: 3.8,
   clone: 4.0,
-  pop: 2.8,
+  swarm: 4.4,
+  tv: 3.0,
   dance: 4.6,
   jumpscare: 2.5,
-  zapped: 2.8,
+  zapped: 4.2,
   talk: Infinity,
   bored: 9,
   yawn: 2.6,
@@ -140,7 +152,14 @@ export const TRICK_NEXT: Partial<Record<TrickName, TrickName>> = {
 };
 
 /**
- * Clicks 1 to 9 after entry play these in order: Aes's sequence of 2026-10-07.
+ * Aes is choosing between two clone tricks: "clone" (option A: a twin pops up beside him)
+ * and "swarm" (option B: he pops into a swarm of tiny ghosts). This is the one the site plays;
+ * adding ?clone=b to the address plays the other one, for comparing.
+ */
+export const CLONE_OPTION: "clone" | "swarm" = "clone";
+
+/**
+ * Clicks 1 to 9 after entry play these in order: Aes's sequence of 2026-10-07, revised 2026-10-08.
  * Click 10 is his fed-up reaction and the speech bubble ("talk").
  * "fire" is built but not in his list yet.
  */
@@ -148,8 +167,8 @@ export const TRICK_ORDER: TrickName[] = [
   "backflip",
   "attitude",
   "tornado",
-  "clone",
-  "pop",
+  CLONE_OPTION,
+  "tv",
   "neon",
   "dance",
   "jumpscare",
@@ -162,8 +181,8 @@ export const CLONE_GAP = 0.95;
 /** Seconds of fed-up shaking on the tenth click before the speech bubble opens */
 export const TALK_LEAD = 0.9;
 
-/** When the "pop" trick bursts, in seconds, so the page can show the POP lettering */
-export const POP_AT = 1.0;
+/** How many tiny ghosts the swarm splits into */
+export const SWARM_COUNT = 14;
 
 /** The tenth click */
 export const CLICKS_PER_CYCLE = TRICK_ORDER.length + 1;
@@ -266,10 +285,6 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.glowT = u * 2.6;
       out.rz = 0.06 * Math.sin(u * 7) * on;
       squashPose(out, 0.05 * Math.sin(u * 12) * on);
-      // Once the colors are going, a third eye splits open on his forehead, blinks once, and shuts again
-      const blinkAt = 2.2;
-      const blink = 1 - Math.max(0, Math.sin(Math.PI * clamp01((u - blinkAt) / 0.22)));
-      out.third = envelope(u - 0.6, 0.45, 0.5, d - 1.0) * blink;
       break;
     }
     case "fire": {
@@ -322,32 +337,63 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       break;
     }
     case "clone": {
-      // A clone splits off; they turn and look at each other, look back out at you, then merge again
-      const sep = Math.min(easeInOutCubic((u - 0.1) / 0.6), easeInOutCubic((d - 0.15 - u) / 0.6));
-      out.clone = sep;
-      out.x = -CLONE_GAP * sep;
-      out.sx = out.sy = out.sz = 1 - 0.25 * sep;
-      const look = envelope(u - 0.85, 0.25, 0.25, 1.25);
+      // Option A: he steps aside and, with a pop, a twin appears next to him.
+      // They turn and look at each other, look back out at you, then slide together and merge.
+      const apart = Math.min(easeInOutCubic(u / 0.35), easeInOutCubic((d - 0.15 - u) / 0.6));
+      out.clone = apart;
+      out.x = -CLONE_GAP * apart;
+      out.sx = out.sy = out.sz = 1 - 0.25 * apart;
+      out.cloneScale = u < 0.3 ? 0 : Math.max(0, smooth((u - 0.3) / 0.1) + spring(u - 0.3, 0.35, 6, 16));
+      const look = envelope(u - 0.9, 0.25, 0.25, 1.25);
       out.cloneLook = look;
       out.lookX = 0.09 * look;
       out.ry = 0.4 * look;
       out.grin = 0.5 * look;
       break;
     }
-    case "pop": {
-      // Inflates 30% like a balloon, trembling, then bursts and pops back a moment later
-      if (u < POP_AT) {
-        const blow = smooth(u / (POP_AT - 0.1));
-        const s = 1 + 0.3 * blow + 0.025 * Math.sin(u * 45) * blow;
-        out.sx = out.sz = s;
-        out.sy = s * (1 - 0.04 * blow);
-        out.lid = 0.5 * blow;
-        out.frown = 0.4 * blow;
+    case "swarm": {
+      // Option B: he puffs up and pops into a swarm of tiny ghosts that scatter and hover,
+      // then they rush back together and he pops back whole
+      const burst = 0.4;
+      const regroup = d - 0.9;
+      if (u < burst) {
+        const puff = smooth(u / burst);
+        out.sx = out.sy = out.sz = 1 + 0.15 * puff + 0.02 * Math.sin(u * 50) * puff;
+        out.lid = 0.4 * puff;
+      } else if (u < regroup + 0.55) {
+        out.sx = out.sy = out.sz = 0.0001;
       } else {
-        const back = POP_AT + 0.85;
-        const scale = u < back ? 0 : smooth((u - back) / 0.2) + spring(u - back, 0.25, 5, 14);
-        out.sx = out.sy = out.sz = Math.max(scale, 0.0001);
-        out.grin = u < back ? 0 : 0.6 * envelope(u - back, 0.15, 0.4, d - back);
+        const back = u - regroup - 0.55;
+        out.sx = out.sy = out.sz = Math.max(0.0001, smooth(back / 0.12) + spring(back, 0.25, 6, 15));
+        out.grin = 0.6 * envelope(back, 0.1, 0.3, d - regroup - 0.55);
+      }
+      const spread = u < burst ? 0 : Math.min(1, smooth((u - burst) / 0.35) + spring(u - burst, 0.12, 5, 12));
+      out.swarm = u < regroup ? spread : 1 - easeInOutCubic((u - regroup) / 0.55);
+      break;
+    }
+    case "tv": {
+      // Static fuzzes over him like a lost channel, then the old-TV switch-off:
+      // he squeezes into a thin line, then a dot, and he's gone. A moment later he flickers back on.
+      const lineAt = 1.05;
+      const offAt = 1.55;
+      const onAt = 2.25;
+      if (u < offAt) {
+        out.tv = smooth(u / 0.2);
+        const k1 = smooth((u - lineAt) / 0.2);
+        const k2 = smooth((u - lineAt - 0.25) / 0.18);
+        out.sy = 1 + (0.02 - 1) * k1;
+        out.sx = out.sz = (1 + 0.2 * k1) * (1 - 0.97 * k2);
+        out.crt = k1;
+        // Glitchy sideways jumps while the signal breaks up
+        out.x = 0.07 * Math.sin(Math.floor(u * 14) * 78.233) * out.tv * (1 - k1);
+      } else if (u < onAt) {
+        out.sx = out.sy = out.sz = 0.0001;
+      } else {
+        const k = u - onAt;
+        out.sx = out.sz = Math.max(0.0001, smooth(k / 0.1));
+        out.sy = Math.max(0.0001, smooth((k - 0.08) / 0.15));
+        out.tv = 1 - smooth((k - 0.25) / 0.4);
+        out.crt = 1 - smooth(k / 0.25);
       }
       break;
     }
@@ -389,7 +435,8 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       break;
     }
     case "zapped": {
-      // A cartoon electric shock: goes black, sparks crackle yellow around him, shakes like mad, then a dazed fizzle
+      // A cartoon electric shock: goes black, sparks crackle yellow around him, shakes like mad.
+      // Afterwards he looks tired and sad for a couple of seconds, then perks back up.
       const zapEnd = 1.8;
       const shock = envelope(u, 0.04, 0.25, zapEnd);
       out.shock = shock;
@@ -399,15 +446,22 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.x = 0.13 * Math.sin(u * 71) * shock;
       out.y += 0.06 * Math.sin(u * 53) * shock;
       out.rz = 0.09 * Math.sin(u * 61 + 1) * shock;
-      const after = envelope(u - zapEnd + 0.2, 0.15, 0.5, d - zapEnd + 0.2);
-      out.soot = 0.7 * after;
-      out.smoke = 0.6 * after;
-      out.lid = Math.max(out.lid, 0.6 * after);
+      const after = u - zapEnd + 0.2;
+      out.soot = 0.6 * envelope(after, 0.15, 0.6, 1.4);
+      out.smoke = 0.5 * envelope(after, 0.15, 0.5, 1.0);
+      const sad = envelope(after, 0.25, 0.5, d - zapEnd + 0.2);
+      out.frown = Math.max(out.frown * (1 - sad), 0.9 * sad);
+      out.grin *= 1 - sad;
+      out.lid = 0.55 * sad;
+      out.brow = sad;
+      out.y -= 0.18 * sad;
+      out.rz += 0.06 * sad;
+      squashPose(out, -0.05 * sad);
       break;
     }
     case "talk": {
-      // Fed up: puffs up and shakes with a scowl. Then shrinks below the speech bubble and leans in,
-      // eyes half shut, mouth flapping while it barks the line.
+      // Fed up: puffs up and shakes with a scowl. Then, as the speech bubble opens, he shrinks below it
+      // and goes back to his usual smile, and keeps it.
       if (u < TALK_LEAD) {
         const e = envelope(u, 0.1, 0.25, TALK_LEAD);
         out.frown = e;
@@ -422,10 +476,6 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.rx = 0.12 * lean;
       out.y = -1.05 * lean;
       out.sx = out.sy = out.sz = 1 - 0.15 * lean;
-      out.lid = 0.5 * lean;
-      const talking = clamp01((1.8 - u) * 2);
-      out.grin = (0.35 + 0.35 * Math.sin(u * 17)) * talking * lean;
-      out.frown = lean * (1 - talking);
       break;
     }
     case "bored": {
@@ -465,6 +515,7 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       // Poked awake: eyes crack open into a squint, brows go up, he sags back once, then drags himself upright
       const e = envelope(u, 0.35, 0.45, d);
       out.wake = e;
+      out.brow = e;
       const sag = Math.max(0, Math.sin(Math.PI * clamp01((u - 0.8) / 0.7)));
       out.lid = 1.15 - 0.65 * smooth(u / 0.6) + 0.3 * sag;
       const up = smooth(u / 1.8);
@@ -489,7 +540,7 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
 
   if (reducedMotion) {
     // Keep the face, glow, and the vanishing tricks' scale; drop the movement
-    const keepScale = name === "boo" || name === "pop" ? out.sx : 1;
+    const keepScale = name === "boo" || name === "swarm" || name === "tv" ? out.sx : 1;
     Object.assign(out, { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: keepScale, sy: keepScale, sz: keepScale, lookX: 0 });
   }
   return out;

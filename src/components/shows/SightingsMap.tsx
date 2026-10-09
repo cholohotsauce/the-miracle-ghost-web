@@ -1,116 +1,93 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import type { Neighborhood, Sighting } from "@/content/shows";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { Sighting } from "@/content/shows";
+import { WORLD_LAND, WORLD_PROJECTION, WORLD_SIZE } from "@/content/worldMap";
 
 /**
- * A hand-drawn style map of Miami with the ghost's sightings, pinned by neighborhood.
- * Drawn in SVG from rough coordinates, so it loads instantly and needs no map service.
- * It is a sketch, not a street map.
+ * A world map with the ghost's sightings, pinned by city.
+ * The coastlines are baked into one SVG path (scripts/bake-world-map.mjs), so it loads instantly and needs no map service.
+ * Tapping a pin zooms in on it and opens its card.
  */
 
-// Map window in degrees
-const NORTH = 25.885;
-const SOUTH = 25.715;
-const WEST = -80.265;
-const EAST = -80.11;
-const W = 600;
-const H = Math.round(W * ((NORTH - SOUTH) / ((EAST - WEST) * Math.cos((25.8 * Math.PI) / 180))));
+const { width: W, height: H } = WORLD_SIZE;
+const ZOOM = 3;
 
-const project = ([lat, lng]: [number, number]) => [((lng - WEST) / (EAST - WEST)) * W, ((NORTH - lat) / (NORTH - SOUTH)) * H] as const;
-const path = (pts: [number, number][]) => pts.map((p, i) => `${i ? "L" : "M"}${project(p).map((v) => v.toFixed(1)).join(",")}`).join("") + "Z";
+/** Natural Earth projection, matching the baked outline */
+function project([lat, lng]: [number, number]) {
+  const lambda = (lng * Math.PI) / 180;
+  const phi = (lat * Math.PI) / 180;
+  const phi2 = phi * phi;
+  const phi4 = phi2 * phi2;
+  const x = lambda * (0.8707 - 0.131979 * phi2 + phi4 * (-0.013791 + phi4 * (0.003971 * phi2 - 0.001529 * phi4)));
+  const y = phi * (1.007226 + phi2 * (0.015085 + phi4 * (-0.044475 + 0.028874 * phi2 - 0.005916 * phi4)));
+  return [WORLD_PROJECTION.x + x * WORLD_PROJECTION.scale, WORLD_PROJECTION.y - y * WORLD_PROJECTION.scale] as const;
+}
 
-/** Approximate neighborhood centers */
-const HOODS: Record<Neighborhood, [number, number]> = {
-  "Little River": [25.848, -80.198],
-  "Little Haiti": [25.832, -80.2],
-  "Design District": [25.813, -80.197],
-  Allapattah: [25.815, -80.224],
-  Wynwood: [25.8, -80.204],
-  Overtown: [25.786, -80.203],
-  Downtown: [25.774, -80.198],
-  "Little Havana": [25.766, -80.222],
-  "Coconut Grove": [25.728, -80.242],
-  "Miami Beach": [25.79, -80.132],
-};
-
-// The mainland, cut along Biscayne Bay (rough)
-const MAINLAND: [number, number][] = [
-  [NORTH + 0.01, WEST - 0.01],
-  [NORTH + 0.01, -80.181],
-  [25.85, -80.183],
-  [25.82, -80.186],
-  [25.795, -80.187],
-  [25.776, -80.186],
-  [25.765, -80.19],
-  [25.752, -80.203],
-  [25.737, -80.222],
-  [25.722, -80.243],
-  [SOUTH - 0.01, -80.257],
-  [SOUTH - 0.01, WEST - 0.01],
-];
-
-// Miami Beach, the barrier island (rough)
-const BEACH: [number, number][] = [
-  [NORTH + 0.01, -80.143],
-  [NORTH + 0.01, -80.121],
-  [25.85, -80.12],
-  [25.82, -80.122],
-  [25.795, -80.127],
-  [25.775, -80.13],
-  [25.766, -80.134],
-  [25.768, -80.142],
-  [25.79, -80.145],
-  [25.82, -80.142],
-  [25.85, -80.141],
-];
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
+  const reducedMotion = useReducedMotion() ?? false;
   const [open, setOpen] = useState<number | null>(null);
-  // Several pieces in one neighborhood fan out around its center
+  // Several pieces in one city fan out around its center
   const placed = sightings.map((s, i) => {
-    const same = sightings.filter((o) => o.neighborhood === s.neighborhood);
+    const same = sightings.filter((o) => o.city === s.city);
     const k = same.indexOf(s);
-    const [x, y] = project(HOODS[s.neighborhood]);
-    const a = (k / Math.max(same.length, 1)) * Math.PI * 2;
-    const r = same.length > 1 ? 14 : 0;
+    const [x, y] = project(s.at);
+    const a = (k / Math.max(same.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    const r = same.length > 1 ? 9 : 0;
     return { s, i, x: x + Math.cos(a) * r, y: y + Math.sin(a) * r };
   });
   const active = open === null ? null : placed[open];
 
+  // Zoom in on the open pin, kept inside the map
+  const vw = active ? W / ZOOM : W;
+  const vh = active ? H / ZOOM : H;
+  const vx = active ? clamp(active.x - vw / 2, 0, W - vw) : 0;
+  const vy = active ? clamp(active.y - vh / 2, 0, H - vh) : 0;
+  // Pins keep their size on screen while the map zooms
+  const pinScale = (active ? 1 / ZOOM : 1) * 1.6;
+
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Rough map of Miami with the ghost's sightings" className="h-auto w-full border-2 border-line bg-background">
+      <motion.svg
+        initial={false}
+        animate={{ viewBox: `${vx} ${vy} ${vw} ${vh}` }}
+        transition={{ duration: reducedMotion ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
+        role="img"
+        aria-label="World map with the ghost's sightings"
+        className="h-auto w-full border-2 border-line bg-background"
+        style={{ aspectRatio: `${W} / ${H}` }}
+        onClick={(e) => e.target === e.currentTarget && setOpen(null)}
+      >
         <defs>
-          <pattern id="water" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="8" className="stroke-foreground/15" strokeWidth="1.5" />
+          <pattern id="water" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="6" className="stroke-foreground/15" strokeWidth="1.2" />
           </pattern>
         </defs>
-        <rect width={W} height={H} fill="url(#water)" />
-        <path d={path(MAINLAND)} className="fill-background stroke-foreground" strokeWidth="2.5" strokeLinejoin="round" />
-        <path d={path(BEACH)} className="fill-background stroke-foreground" strokeWidth="2.5" strokeLinejoin="round" />
-        <text x={project([25.8, -80.163])[0]} y={project([25.8, -80.163])[1]} textAnchor="middle" className="fill-foreground/40 font-mono text-[9px] uppercase tracking-[0.3em]">
-          Biscayne Bay
-        </text>
-        {(Object.keys(HOODS) as Neighborhood[]).map((n) => {
-          const [x, y] = project(HOODS[n]);
-          return (
-            <text key={n} x={x} y={y + 24} textAnchor="middle" className="fill-foreground/55 font-mono text-[8.5px] uppercase tracking-[0.15em]">
-              {n}
-            </text>
-          );
-        })}
+        <rect width={W} height={H} fill="url(#water)" onClick={() => setOpen(null)} />
+        <path
+          d={WORLD_LAND}
+          className="fill-background stroke-foreground"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          onClick={() => setOpen(null)}
+        />
         {placed.map(({ s, i, x, y }) => (
-          <g
+          <motion.g
             key={i}
             role="button"
             tabIndex={0}
-            aria-label={`${s.name}, ${s.neighborhood}`}
+            aria-label={`${s.name}, ${s.city}`}
             onClick={() => setOpen(open === i ? null : i)}
             onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen(open === i ? null : i))}
             className="cursor-pointer outline-none [&:focus-visible>path]:stroke-[var(--color-neon-pink)]"
-            transform={`translate(${x} ${y})`}
+            initial={false}
+            animate={{ x, y, scale: pinScale }}
+            transition={{ duration: reducedMotion ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
+            style={{ transformBox: "view-box", originX: 0, originY: 0 }}
           >
             {/* A little ghost pin */}
             <path
@@ -120,14 +97,14 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             />
             <circle cx="-3.5" cy="-10" r="1.6" className={open === i || s.status === "buffed" ? "fill-foreground" : "fill-background"} />
             <circle cx="3.5" cy="-10" r="1.6" className={open === i || s.status === "buffed" ? "fill-foreground" : "fill-background"} />
-          </g>
+          </motion.g>
         ))}
-      </svg>
+      </motion.svg>
 
       <div className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60">
         <span>● Still running</span>
         <span>○ Buffed (painted over)</span>
-        <span>Rough map. Pins sit on the neighborhood, not the wall.</span>
+        <span>Pins sit on the city, not the wall. Tap one to zoom in.</span>
       </div>
 
       <AnimatePresence>
@@ -142,7 +119,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             <div>
               <p className="font-drip text-2xl uppercase leading-none">{active.s.name}</p>
               <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-foreground/70">
-                {active.s.neighborhood}
+                {active.s.city}
                 {active.s.year ? ` · ${active.s.year}` : ""}
                 {active.s.status ? ` · ${active.s.status === "running" ? "still running" : "buffed"}` : ""}
               </p>

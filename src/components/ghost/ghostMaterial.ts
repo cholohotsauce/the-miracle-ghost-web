@@ -5,8 +5,8 @@ import { EYES, FACE_RECT } from "./modelBake";
  * Aes's ghost as matte grey clay on a white page, like the render in his prototype video.
  * The face is his own polypainted linework, projected from the front (see modelBake.ts).
  * On top of the clay: a grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
- * plus the extras a few tricks paint on: a third eye, sunglasses, a gold tooth, flames and soot, a groggy waking face,
- * spiral dizzy eyes, and an electric shock.
+ * plus the extras a few tricks paint on: sunglasses, a gold tooth, flames and soot, a groggy waking face, worried brows,
+ * spiral dizzy eyes, an electric shock, and TV static with an old-TV switch-off.
  * Colors are passed as sRGB triples and written out as-is.
  */
 
@@ -17,13 +17,8 @@ import { EYES, FACE_RECT } from "./modelBake";
  */
 const MOUTH = { top: 0.1485, cy: 0.3537, r: 0.3528, halfW: 0.287 };
 
-/** Where the extras sit on the face, in model XY. The middle lobe of the head is narrow, so they hug the center. */
-const EXTRAS = {
-  /** Center of the third eye, on the forehead above the painted eyes */
-  thirdEyeY: 1.17,
-  /** Where the sunglasses come to rest */
-  shadesY: 0.5,
-};
+/** Where the sunglasses come to rest on the face, in model Y */
+const SHADES_Y = 0.5;
 
 const vertexShader = /* glsl */ `
   // Distance in from the silhouette's edge, baked per vertex
@@ -71,7 +66,6 @@ const fragmentShader = /* glsl */ `
   uniform vec4 uEyeL;
   uniform vec4 uEyeR;
   uniform vec4 uMouth;
-  uniform float uThird;
   uniform float uShades;
   uniform float uTooth;
   uniform float uGlint;
@@ -79,10 +73,13 @@ const fragmentShader = /* glsl */ `
   uniform float uFireLevel;
   uniform float uSoot;
   uniform float uWake;
+  uniform float uBrow;
   uniform float uDizzy;
   uniform float uShock;
+  uniform float uTv;
+  uniform float uCrt;
   uniform float uTime;
-  uniform vec2 uExtras;
+  uniform float uShadesY;
 
   varying vec3 vNormal;
   varying vec3 vViewPos;
@@ -127,7 +124,7 @@ const fragmentShader = /* glsl */ `
     // Dizzy: spiral eyes take their place
     if (uDizzy > 0.5) return 0.0;
     // Behind the sunglasses: the lenses wipe the eyes away as they slide down
-    if (uShades > 0.0 && (f.y > mix(1.75, uExtras.y, uShades) - 0.1 || uShades > 0.85)) return 0.0;
+    if (uShades > 0.0 && (f.y > mix(1.75, uShadesY, uShades) - 0.1 || uShades > 0.85)) return 0.0;
     float lidEdge = eye.w * (1.0 - 1.4 * uLid);
     float lid = 1.0 - smoothstep(lidEdge - 0.01, lidEdge + 0.01, q.y);
     float open = texture2D(uFaceMap, faceUv(eye.xy + vec2(q.x, q.y / uBlink))).r * lid;
@@ -195,32 +192,9 @@ const fragmentShader = /* glsl */ `
     return clamp((arms + core) * uGlint, 0.0, 1.0);
   }
 
-  // The third eye: a vertical slit like his others that splits open into an almond with a neon iris. Returns (rgb, mask).
-  vec4 thirdEye(vec2 f) {
-    vec2 q = f - vec2(0.0, uExtras.x);
-    float h = 0.15;
-    float ny = q.y / h;
-    if (abs(ny) > 1.15 || abs(q.x) > 0.14) return vec4(0.0);
-    float w = 0.012 + 0.085 * uThird;
-    // Lens shape: widest in the middle, pointed at both ends
-    float edgeX = w * max(1.0 - ny * ny, 0.0);
-    float d = abs(q.x) - edgeX;
-    float inside = (1.0 - smoothstep(-0.004, 0.0, d)) * step(abs(ny), 1.0);
-    float outline = stroke(abs(d), 0.013) * (1.0 - smoothstep(1.0, 1.08, abs(ny)));
-    vec2 iq = q - vec2(uLook.x * 0.6, uLook.y * 0.4);
-    float iris = 1.0 - smoothstep(0.052, 0.058, length(iq * vec2(1.0, 0.8)));
-    float pupil = 1.0 - smoothstep(0.012, 0.018, length(iq * vec2(1.6, 0.55)));
-    vec3 col = vec3(0.98);
-    col = mix(col, uGlowColor * 0.9 + 0.1, iris);
-    col = mix(col, vec3(0.02), pupil);
-    col = mix(col, vec3(0.03), outline);
-    float present = smoothstep(0.0, 0.08, uThird);
-    return vec4(col, max(inside, outline) * present);
-  }
-
   // Black sunglasses that slide down from the top of the head. Returns (rgb, mask).
   vec4 sunglasses(vec2 f) {
-    float y = mix(1.75, uExtras.y, uShades);
+    float y = mix(1.75, uShadesY, uShades);
     vec2 q = f - vec2(0.0, y);
     if (abs(q.y) > 0.2 || abs(q.x) > 0.42) return vec4(0.0);
     // Wayfarer-ish lenses: a little wider at the top
@@ -252,7 +226,7 @@ const fragmentShader = /* glsl */ `
     return stroke(line, 0.01) * (1.0 - smoothstep(radius - 0.01, radius, r)) * smoothstep(0.3, 0.6, uDizzy);
   }
 
-  // The groggy waking face, from Aes's sketch: squinting V eyes and worried brows lifted high
+  // The groggy waking face, from Aes's sketch: squinting V eyes
   float wakeInk(vec2 f, vec2 eyeR) {
     if (uWake <= 0.0) return 0.0;
     vec2 m = vec2(abs(f.x), f.y);
@@ -260,13 +234,19 @@ const fragmentShader = /* glsl */ `
     float bottom = 0.17;
     // A second stroke from the bottom of each eye, angled outward, makes the V
     float v = sdSegment(m, vec2(eye.x, bottom), vec2(eye.x + 0.13 * uWake, bottom + 0.34));
-    // Brows: inner ends high, sloping down and out
-    float lift = 0.07 * uWake;
+    return stroke(v, 0.017) * smoothstep(0.0, 0.4, uWake);
+  }
+
+  // Worried brows, inner ends high and sloping down and out: waking up, and sad after the zap
+  float browInk(vec2 f) {
+    if (uBrow <= 0.0) return 0.0;
+    vec2 m = vec2(abs(f.x), f.y);
+    float lift = 0.07 * uBrow;
     vec2 a = vec2(0.06, 1.03 + lift);
     vec2 b = vec2(0.19, 0.95 + lift);
     vec2 c = vec2(0.31, 0.92 + lift);
     float brow = min(sdSegment(m, a, b), sdSegment(m, b, c));
-    return max(stroke(v, 0.017), stroke(brow, 0.016)) * smoothstep(0.0, 0.4, uWake);
+    return stroke(brow, 0.016) * smoothstep(0.0, 0.4, uBrow);
   }
 
   void main() {
@@ -316,7 +296,9 @@ const fragmentShader = /* glsl */ `
     if (vFront > 0.01) {
       vec2 f = vShape - uLook;
       float ink = max(mouthInk(f), max(eyeInk(f, uEyeL), eyeInk(f, uEyeR)));
-      ink = max(ink, max(wakeInk(f, uEyeR.xy), dizzyInk(f, uEyeR.xy))) * vFront;
+      ink = max(ink, max(max(wakeInk(f, uEyeR.xy), browInk(f)), dizzyInk(f, uEyeR.xy))) * vFront;
+      // Under TV static the face fades into the snow
+      ink *= 1.0 - 0.75 * uTv;
       // Ink turns white on a glowing or blacked-out body
       vec3 inkColor = mix(vec3(0.05), vec3(1.0), max(uGlow * 0.9, uShock));
       color = mix(color, inkColor, ink);
@@ -326,16 +308,25 @@ const fragmentShader = /* glsl */ `
         vec3 gold = vec3(1.0, 0.76, 0.2) * tooth.x;
         color = mix(color, gold, tooth.y * vFront);
       }
-      if (uThird > 0.0) {
-        vec4 eye3 = thirdEye(f);
-        color = mix(color, eye3.rgb, eye3.a * vFront);
-      }
       if (uShades > 0.0) {
         vec4 glasses = sunglasses(f);
         color = mix(color, glasses.rgb, glasses.a * vFront);
       }
       if (uGlint > 0.0) color = mix(color, vec3(1.0, 0.97, 0.85), sparkle(f) * vFront);
     }
+
+    // TV static: black and white snow in chunky pixels that changes every frame, scanlines, and a rolling bar.
+    // At the switch-off (uCrt) he collapses into a hard black line and dot, which reads on the white page.
+    if (uTv > 0.0) {
+      float frame = floor(uTime * 30.0);
+      vec2 px = floor(gl_FragCoord.xy / 2.0);
+      float snow = hash(px + vec2(frame * 13.1, frame * 7.7));
+      float scan = 0.82 + 0.18 * step(0.5, fract(gl_FragCoord.y / 4.0));
+      float bar = smoothstep(0.0, 0.25, abs(fract(gl_FragCoord.y / 260.0 - uTime * 0.9) - 0.5));
+      vec3 tv = vec3(snow) * scan * (0.75 + 0.25 * bar);
+      color = mix(color, tv, uTv * 0.85);
+    }
+    if (uCrt > 0.0) color = mix(color, vec3(0.03), uCrt);
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -356,7 +347,6 @@ export type GhostUniforms = {
   uEyeL: { value: THREE.Vector4 };
   uEyeR: { value: THREE.Vector4 };
   uMouth: { value: THREE.Vector4 };
-  uThird: { value: number };
   uShades: { value: number };
   uTooth: { value: number };
   uGlint: { value: number };
@@ -364,9 +354,12 @@ export type GhostUniforms = {
   uFireLevel: { value: number };
   uSoot: { value: number };
   uWake: { value: number };
+  uBrow: { value: number };
   uDizzy: { value: number };
   uShock: { value: number };
-  uExtras: { value: THREE.Vector2 };
+  uTv: { value: number };
+  uCrt: { value: number };
+  uShadesY: { value: number };
 };
 
 export function createGhostMaterial(faceMap: THREE.Texture) {
@@ -393,7 +386,6 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     uEyeL: { value: eye(0) },
     uEyeR: { value: eye(1) },
     uMouth: { value: new THREE.Vector4(MOUTH.top, MOUTH.cy, MOUTH.r, MOUTH.halfW) },
-    uThird: { value: 0 },
     uShades: { value: 0 },
     uTooth: { value: 0 },
     uGlint: { value: 0 },
@@ -401,9 +393,12 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     uFireLevel: { value: 0 },
     uSoot: { value: 0 },
     uWake: { value: 0 },
+    uBrow: { value: 0 },
     uDizzy: { value: 0 },
     uShock: { value: 0 },
-    uExtras: { value: new THREE.Vector2(EXTRAS.thirdEyeY, EXTRAS.shadesY) },
+    uTv: { value: 0 },
+    uCrt: { value: 0 },
+    uShadesY: { value: SHADES_Y },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,

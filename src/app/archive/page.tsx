@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ArchivePage() {
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-28 md:pt-36 px-4 md:px-6 lg:px-12 pb-page">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-4 md:px-6 lg:px-12 pb-page">
       <header className="mb-10 md:mb-16 flex flex-wrap items-end justify-between gap-4 border-b-2 border-line pb-4">
         <h1 className="text-4xl md:text-6xl font-black tracking-widest uppercase leading-none">Archive</h1>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">

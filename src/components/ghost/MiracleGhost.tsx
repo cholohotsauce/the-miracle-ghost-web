@@ -5,6 +5,7 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { FIRE_PLANE, GhostRig, HALO_SIZE } from "./ghostRig";
+import { SWARM_COUNT } from "./tricks";
 import { FACE_MAP_URL, HALO_MAP_URL, MODEL_URL } from "./modelBake";
 import type { GhostControls } from "./types";
 
@@ -57,6 +58,7 @@ export default function MiracleGhost({
   const [rig] = useState(() => new GhostRig(controls.current, faceMap, haloMap));
   const trickGroup = useRef<THREE.Group>(null);
   const cloneGroup = useRef<THREE.Group>(null);
+  const swarmGroup = useRef<THREE.Group>(null);
   const frames = useRef(0);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -69,7 +71,8 @@ export default function MiracleGhost({
   );
 
   useFrame((state, dt) => {
-    rig.update(controls.current, state.clock.elapsedTime, dt, trickGroup.current, cloneGroup.current);
+    const { current: c } = controls;
+    rig.update(c, state.clock.elapsedTime, dt, trickGroup.current, cloneGroup.current, swarmGroup.current);
     // Two frames in, the ghost is on screen and the shaders are compiled
     if (++frames.current === 2) onReady?.();
   });
@@ -80,27 +83,34 @@ export default function MiracleGhost({
   };
 
   return (
-    <group ref={trickGroup}>
-      <mesh position={[0, HALO_SIZE.centerY, -0.9]} material={rig.halo.material} renderOrder={-1}>
-        <planeGeometry args={[HALO_SIZE.width, HALO_SIZE.height]} />
-      </mesh>
-      <mesh
-        position={[FIRE_PLANE.minX + FIRE_PLANE.width / 2, FIRE_PLANE.minY + FIRE_PLANE.height / 2, FIRE_PLANE.z]}
-        material={rig.fire.material}
-      >
-        <planeGeometry args={[FIRE_PLANE.width, FIRE_PLANE.height]} />
-      </mesh>
-      <mesh
-        geometry={geometry}
-        material={rig.body.material}
-        onClick={handleClick}
-        onPointerOver={() => (document.body.style.cursor = "pointer")}
-        onPointerOut={() => (document.body.style.cursor = "")}
-      />
-      <group ref={cloneGroup} visible={false}>
-        <mesh geometry={geometry} material={rig.cloneBody.material} onClick={handleClick} />
+    <>
+      <group ref={trickGroup}>
+        <mesh position={[0, HALO_SIZE.centerY, -0.9]} material={rig.halo.material} renderOrder={-1}>
+          <planeGeometry args={[HALO_SIZE.width, HALO_SIZE.height]} />
+        </mesh>
+        <mesh
+          position={[FIRE_PLANE.minX + FIRE_PLANE.width / 2, FIRE_PLANE.minY + FIRE_PLANE.height / 2, FIRE_PLANE.z]}
+          material={rig.fire.material}
+        >
+          <planeGeometry args={[FIRE_PLANE.width, FIRE_PLANE.height]} />
+        </mesh>
+        <mesh
+          geometry={geometry}
+          material={rig.body.material}
+          onClick={handleClick}
+          onPointerOver={() => (document.body.style.cursor = "pointer")}
+          onPointerOut={() => (document.body.style.cursor = "")}
+        />
+        <group ref={cloneGroup} visible={false}>
+          <mesh geometry={geometry} material={rig.cloneBody.material} onClick={handleClick} />
+        </group>
       </group>
-    </group>
+      <group ref={swarmGroup} visible={false}>
+        {Array.from({ length: SWARM_COUNT }, (_, i) => (
+          <mesh key={i} geometry={geometry} material={rig.body.material} onClick={handleClick} />
+        ))}
+      </group>
+    </>
   );
 }
 

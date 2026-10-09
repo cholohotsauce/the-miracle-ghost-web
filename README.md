@@ -19,6 +19,7 @@ npm run lint
 | --- | --- |
 | The ghost on Home (tricks, idle moods, speech bubble, paint mode) | `src/components/GhostLanding.tsx`, `src/components/ghost/` |
 | Trick list and order | `src/components/ghost/tricks.ts` |
+| Which clone trick plays (A: a twin, B: a swarm of tiny ghosts) | `CLONE_OPTION` in `src/components/ghost/tricks.ts`. Add `?clone=a` or `?clone=b` to the address to try either one. |
 | Idle moods (bored, yawn, asleep) | `src/lib/useIdleMood.ts` |
 | Mini ghost on every other page | `src/components/site/MiniGhost.tsx` |
 | Spray-paint page changes | `src/components/site/PageTransition.tsx`, `TransitionLink.tsx` |
@@ -27,7 +28,7 @@ npm run lint
 | "Told me off" share card | `src/lib/shareCard.ts` |
 | Shop grid and product pages | `src/app/shop/`, `src/components/shop/`, `src/lib/shopify.ts` |
 | Drop dates, editions, next-drop teaser | `src/content/drops.ts` |
-| Shows and ghost sightings | `src/content/shows.ts` |
+| Shows and ghost sightings | `src/content/shows.ts`, world map in `src/components/shows/SightingsMap.tsx` |
 | Contact topics | `src/content/contact.ts` |
 | Search engines and share previews | `src/lib/site.ts`, `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/opengraph-image.png` |
 | Visitor stats | `src/lib/stats.ts` |
@@ -37,7 +38,7 @@ npm run lint
 Entries marked `sample: true` show a SAMPLE tag on the site until they are replaced:
 
 - `src/content/drops.ts`: the next drop's date and text, plus edition sizes and unlock times per product.
-- `src/content/shows.ts`: real shows and sightings. Sightings are pinned by neighborhood only, never by address.
+- `src/content/shows.ts`: real shows and sightings. Sightings are pinned by city (latitude and longitude of the city center), never by address.
 - Products, prices, photos, and stock come from Shopify automatically.
 
 ## Settings in Vercel
@@ -61,3 +62,7 @@ After Aes sends a new model:
 
 1. `node scripts/bake-ghost-model.mjs "<path to .obj>"` rebuilds the 3D model.
 2. `npm run build && npx next start -p 3123`, then `node scripts/render-ghost-poster.mjs http://localhost:3123` rebuilds the still poster, the link preview image, and the icons. It needs Playwright (`npm i -D playwright`).
+
+## Regenerating the world map
+
+The Ghost Sighting map is baked into `src/content/worldMap.ts`. To rebuild it (for example with more detail), run `node scripts/bake-world-map.mjs`.

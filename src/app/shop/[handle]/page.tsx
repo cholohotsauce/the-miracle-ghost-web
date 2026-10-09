@@ -69,7 +69,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
   };
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-28 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(productLd)} />
       <ProductViewStat handle={product.handle} />
 
