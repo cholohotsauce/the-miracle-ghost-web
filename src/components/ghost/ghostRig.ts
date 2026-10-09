@@ -1,7 +1,17 @@
 import * as THREE from "three";
 import { createFireMaterial, createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
 import { HALO_RECT } from "./modelBake";
-import { blendPose, CLONE_GAP, poseAt, REST, TRICK_DURATION, TRICK_NEXT, type Pose, type TrickName } from "./tricks";
+import {
+  blendPose,
+  CLONE_GAP,
+  poseAt,
+  REST,
+  SWARM_COUNT,
+  TRICK_DURATION,
+  TRICK_NEXT,
+  type Pose,
+  type TrickName,
+} from "./tricks";
 import type { GhostState } from "./types";
 
 export const HALO_SIZE = {
@@ -20,6 +30,17 @@ const NEON_STEP = 0.9;
 
 /** After entry the ghost drops a little and shrinks, making room for the menu */
 const ENTERED = { y: -0.3, scale: 0.92 };
+
+/**
+ * Where each tiny ghost in the swarm hovers, spread evenly over an oval around him (a sunflower pattern),
+ * in world units from his center
+ */
+const SWARM_SPOTS = Array.from({ length: SWARM_COUNT }, (_, i) => {
+  const r = Math.sqrt((i + 0.5) / SWARM_COUNT);
+  const a = i * 2.39996;
+  return { x: 1.5 * r * Math.cos(a), y: 0.15 + 1.6 * r * Math.sin(a) };
+});
+const SWARM_SIZE = 0.24;
 
 /** How long a new trick takes to blend in from wherever the last one left off */
 const BLEND_IN = 0.18;
@@ -53,7 +74,14 @@ export class GhostRig {
     this.enter = initial.entered ? 1 : 0;
   }
 
-  update(c: GhostState, t: number, dt: number, group: THREE.Object3D | null, clone: THREE.Object3D | null = null) {
+  update(
+    c: GhostState,
+    t: number,
+    dt: number,
+    group: THREE.Object3D | null,
+    clone: THREE.Object3D | null = null,
+    swarm: THREE.Object3D | null = null,
+  ) {
     const step = Math.min(dt, 1 / 20);
     const { body, halo } = this;
 
@@ -123,7 +151,6 @@ export class GhostRig {
     uni.uBlink.value = Math.max(blinkScale * (1 - p.lid * 0.3), 0.08);
     uni.uGlow.value = p.glow;
     uni.uGlowColor.value.copy(this.glowColor);
-    uni.uThird.value = p.third;
     uni.uShades.value = p.shades;
     uni.uTooth.value = p.tooth;
     uni.uGlint.value = p.glint;
@@ -131,8 +158,11 @@ export class GhostRig {
     uni.uFireLevel.value = p.fireLevel;
     uni.uSoot.value = p.soot;
     uni.uWake.value = p.wake;
+    uni.uBrow.value = p.brow;
     uni.uDizzy.value = p.dizzy;
     uni.uShock.value = p.shock;
+    uni.uTv.value = p.tv;
+    uni.uCrt.value = p.crt;
     // The halo glows in the neon colors, or yellow while he is being zapped
     halo.uniforms.uColor.value.copy(p.shock > p.glow ? ZAP : this.glowColor);
     halo.uniforms.uStrength.value = Math.max(p.glow, p.shock) * 0.75;
@@ -153,6 +183,7 @@ export class GhostRig {
         const parentScale = group ? group.scale.x : 1;
         clone.position.x = (2 * CLONE_GAP * p.clone) / Math.max(parentScale, 0.0001);
         clone.rotation.y = -0.8 * p.cloneLook;
+        clone.scale.setScalar(Math.max(p.cloneScale, 0.0001));
         const cu = this.cloneBody.uniforms as Record<string, { value: unknown }>;
         for (const [key, u] of Object.entries(uni as Record<string, { value: unknown }>)) {
           const v = u.value;
@@ -162,6 +193,23 @@ export class GhostRig {
         this.cloneBody.uniforms.uLook.value.x = look.x - 2 * p.lookX;
         // Its body sways a beat out of step with the original
         this.cloneBody.uniforms.uTime.value = t + 0.37;
+      }
+    }
+
+    // The swarm sits outside the ghost's group so it stays put while he shrinks away.
+    // Each tiny ghost flies out to its spot and bobs there; they all share his face.
+    if (swarm) {
+      swarm.visible = p.swarm > 0.02;
+      if (swarm.visible) {
+        swarm.position.set(0, ENTERED.y * this.enter, 0);
+        swarm.children.forEach((mini, i) => {
+          const spot = SWARM_SPOTS[i];
+          if (!spot) return;
+          const bob = c.reducedMotion ? 0 : 0.06 * Math.sin(t * 2.2 + i * 1.7);
+          mini.position.set(spot.x * p.swarm, spot.y * p.swarm + bob, 0.1 * Math.sin(i));
+          mini.rotation.z = c.reducedMotion ? 0 : 0.18 * Math.sin(t * 3 + i);
+          mini.scale.setScalar(SWARM_SIZE * Math.min(1, p.swarm * 3));
+        });
       }
     }
   }

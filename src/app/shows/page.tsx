@@ -5,7 +5,7 @@ import { jsonLd } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Shows",
-  description: "Shows, pop-ups, and ghost sightings around Miami from The Miracle Ghost (Aes).",
+  description: "Shows, pop-ups, and ghost sightings from The Miracle Ghost (Aes), Miami and beyond.",
   alternates: { canonical: "/shows" },
 };
 
@@ -72,7 +72,7 @@ export default function ShowsPage() {
   }));
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-28 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       {eventsLd.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(eventsLd)} />
       )}
@@ -113,7 +113,7 @@ export default function ShowsPage() {
             Ghost sightings
           </h2>
           <p className="mb-6 max-w-prose text-sm text-foreground/70">
-            Where the ghost has been spotted around Miami. Tap a ghost to see the piece.
+            Where the ghost has been spotted around the world. Tap a ghost to see the piece.
           </p>
           <SightingsMap sightings={sightings} />
         </section>

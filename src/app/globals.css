@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  /* Space above the top menu. Aes asked for it lower; on phones it also clears the notch. */
-  --nav-top: max(1.75rem, calc(env(safe-area-inset-top) + 1rem));
+  /* Space above the top menu. Aes asked for it lower, and lower again on phones (2026-10-09) so it is easier
+     to reach with a thumb; it also clears the notch. */
+  --nav-top: max(3rem, calc(env(safe-area-inset-top) + 1.75rem));
   --background: #ffffff;
   --foreground: #0a0a0a;
   --muted: #f3f3f3;

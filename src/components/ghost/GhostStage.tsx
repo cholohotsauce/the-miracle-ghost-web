@@ -71,11 +71,12 @@ export default function GhostStage({
       <Follow controls={controls}>
         <Float
           enabled={!reducedMotion}
-          speed={1.5}
+          // Aes asked for a bigger, still smooth rise and fall (2026-10-09): about three times the old
+          // height, on a slow sine of about 10 seconds a cycle
+          speed={2.4}
           rotationIntensity={0.2}
-          // Aes asked for 15% more bob than the original 0.55
-          floatIntensity={0.6325}
-          floatingRange={[-0.08, 0.08]}
+          floatIntensity={1}
+          floatingRange={[-0.16, 0.16]}
         >
           <Suspense fallback={null}>
             <MiracleGhost controls={controls} onPoke={onPoke} onReady={onReady} />
