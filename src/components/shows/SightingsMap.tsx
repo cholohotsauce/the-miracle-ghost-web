@@ -58,15 +58,11 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         role="img"
         aria-label="World map with the ghost's sightings"
         className="h-auto w-full border-2 border-line bg-background"
+        overflow="hidden"
         style={{ aspectRatio: `${W} / ${H}` }}
         onClick={(e) => e.target === e.currentTarget && setOpen(null)}
       >
-        <defs>
-          <pattern id="water" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="6" className="stroke-foreground/15" strokeWidth="1.2" />
-          </pattern>
-        </defs>
-        <rect width={W} height={H} fill="url(#water)" onClick={() => setOpen(null)} />
+        <rect width={W} height={H} className="fill-background" onClick={() => setOpen(null)} />
         <path
           d={WORLD_LAND}
           className="fill-background stroke-foreground"
@@ -97,15 +93,27 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             />
             <circle cx="-3.5" cy="-10" r="1.6" className={open === i || s.status === "buffed" ? "fill-foreground" : "fill-background"} />
             <circle cx="3.5" cy="-10" r="1.6" className={open === i || s.status === "buffed" ? "fill-foreground" : "fill-background"} />
+            {/* The city, revealed over the selected ghost */}
+            {open === i && (
+              <g transform="translate(0 -27)" pointerEvents="none">
+                <rect
+                  x={-(active!.s.city.length * 3.1 + 7)}
+                  y={-8}
+                  width={active!.s.city.length * 6.2 + 14}
+                  height={14}
+                  rx={7}
+                  className="fill-foreground"
+                />
+                <text textAnchor="middle" y={2.5} className="fill-background font-mono uppercase" fontSize="8" letterSpacing="0.6">
+                  {s.city}
+                </text>
+              </g>
+            )}
           </motion.g>
         ))}
       </motion.svg>
 
-      <div className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60">
-        <span>● Still running</span>
-        <span>○ Buffed (painted over)</span>
-        <span>Pins sit on the city, not the wall. Tap one to zoom in.</span>
-      </div>
+      <p className="mt-3 text-base md:text-lg">Only the &lsquo;known&rsquo; world is shown here.</p>
 
       <AnimatePresence>
         {active && (

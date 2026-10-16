@@ -9,6 +9,7 @@ import SoldOutStamp from "@/components/shop/SoldOutStamp";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
 import TransitionLink from "@/components/site/TransitionLink";
 import { editionFor, lockedUntil } from "@/content/drops";
+import { categoryOf } from "@/content/shopCategories";
 import { formatPrice, getProduct, getProducts } from "@/lib/shopify";
 import { jsonLd, SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -48,7 +49,12 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
   const price = formatPrice(product.price);
   const edition = editionFor(product.handle, product.productType);
   const locked = lockedUntil(product.handle);
-  const others = all.filter((p) => p.handle !== product.handle).slice(0, 4);
+  const category = categoryOf(product);
+  // More from the same door first, then the rest of the shop
+  const others = all
+    .filter((p) => p.handle !== product.handle)
+    .sort((a, b) => Number(categoryOf(b) === category) - Number(categoryOf(a) === category))
+    .slice(0, 4);
 
   const productLd = {
     "@context": "https://schema.org",
@@ -74,11 +80,11 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
       <ProductViewStat handle={product.handle} />
 
       <TransitionLink
-        href="/shop"
-        curtain="Shop"
+        href={`/shop/${category.slug}`}
+        curtain={category.label}
         className="mb-6 inline-block font-mono text-xs uppercase tracking-[0.25em] text-foreground/60 underline-offset-4 hover:underline md:mb-10"
       >
-        ← Back to the shop
+        ← Back to {category.label}
       </TransitionLink>
 
       <div className="grid gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-14">

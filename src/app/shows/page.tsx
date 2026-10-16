@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PageTitle from "@/components/site/PageTitle";
 import SightingsMap from "@/components/shows/SightingsMap";
 import { shows, sightings, type Show } from "@/content/shows";
 import { jsonLd } from "@/lib/site";
@@ -17,41 +18,47 @@ const fmt = (iso: string) =>
 
 function ShowRow({ show, upcoming }: { show: Show; upcoming: boolean }) {
   return (
-    <li className="grid grid-cols-[5.5rem_1fr] gap-4 border-b-2 border-line py-5 md:grid-cols-[9rem_1fr_auto] md:items-center md:gap-8">
-      <p className="font-mono text-xs uppercase leading-relaxed tracking-[0.15em]">
+    <li className="grid gap-3 border-b-2 border-line py-7 md:grid-cols-[11rem_1fr_auto] md:items-center md:gap-8 md:py-10">
+      <p className="font-mono text-xs uppercase leading-loose tracking-[0.18em] md:text-sm">
         {fmt(show.start)}
         {show.end && (
           <>
             <br />
-            <span className="text-foreground/60">to {fmt(show.end)}</span>
+            to {fmt(show.end)}
           </>
         )}
       </p>
       <div>
-        <h3 className={`font-drip uppercase leading-none ${upcoming ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl text-foreground/70"}`}>
+        <h3 className={`font-black uppercase leading-none tracking-tight ${upcoming ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"}`}>
           {show.title}
           {show.sample && (
-            <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] tracking-[0.25em] text-foreground/60">
+            <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
               SAMPLE
             </span>
           )}
         </h3>
-        <p className="mt-2 text-sm text-foreground/70">
+        <p className="mt-3 text-base md:text-lg">
           {show.venue} · {show.city}
         </p>
-        {show.note && <p className="mt-1 text-sm text-foreground/50">{show.note}</p>}
+        {show.note && <p className="mt-1 text-sm text-foreground/60">{show.note}</p>}
       </div>
       {show.link && (
         <a
           href={show.link}
           target="_blank"
           rel="noreferrer"
-          className="col-start-2 inline-block w-fit rounded-full bg-foreground px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-background md:col-start-auto"
+          className="inline-block w-fit rounded-full bg-foreground px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-background md:col-start-auto"
         >
           {upcoming ? "Details" : "Recap"}
         </a>
       )}
     </li>
+  );
+}
+
+function ListLabel({ children }: { children: string }) {
+  return (
+    <h3 className="border-b-2 border-line pb-2 font-mono text-xs uppercase tracking-[0.3em] md:text-sm">{children}</h3>
   );
 }
 
@@ -76,30 +83,27 @@ export default function ShowsPage() {
       {eventsLd.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(eventsLd)} />
       )}
-      <header className="mb-10 flex flex-wrap items-end justify-between gap-4 border-b-2 border-line pb-4 md:mb-14">
-        <h1 className="text-4xl font-black uppercase leading-none tracking-widest md:text-6xl">Shows</h1>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Walls, rooms, pop-ups</p>
-      </header>
+      <PageTitle>Shows</PageTitle>
 
-      <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
-        <section aria-labelledby="timeline">
+      <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+        <section aria-labelledby="timeline" className="lg:pt-6">
           <h2 id="timeline" className="sr-only">
             Timeline
           </h2>
-          <h3 className="mb-2 font-mono text-xs uppercase tracking-[0.3em] text-foreground/60">Coming up</h3>
+          <ListLabel>Upcoming</ListLabel>
           {upcoming.length ? (
-            <ul className="mb-12 border-t-2 border-line">
+            <ul className="mb-14">
               {upcoming.map((s) => (
                 <ShowRow key={s.title + s.start} show={s} upcoming />
               ))}
             </ul>
           ) : (
-            <p className="mb-12 border-y-2 border-line py-6 font-drip text-2xl uppercase">Nothing booked. The ghost is plotting.</p>
+            <p className="mb-14 border-b-2 border-line py-8 font-drip text-2xl uppercase">Nothing booked. The ghost is plotting.</p>
           )}
           {past.length > 0 && (
             <>
-              <h3 className="mb-2 font-mono text-xs uppercase tracking-[0.3em] text-foreground/60">Past</h3>
-              <ul className="border-t-2 border-line">
+              <ListLabel>Past exhibitions</ListLabel>
+              <ul>
                 {past.map((s) => (
                   <ShowRow key={s.title + s.start} show={s} upcoming={false} />
                 ))}
@@ -108,13 +112,11 @@ export default function ShowsPage() {
           )}
         </section>
 
-        <section aria-labelledby="sightings">
-          <h2 id="sightings" className="mb-2 font-drip text-4xl uppercase leading-none md:text-5xl">
+        <section aria-labelledby="sightings" className="lg:pt-6">
+          <h2 id="sightings" className="font-drip text-5xl uppercase leading-none md:text-6xl">
             Ghost sightings
           </h2>
-          <p className="mb-6 max-w-prose text-sm text-foreground/70">
-            Where the ghost has been spotted around the world. Tap a ghost to see the piece.
-          </p>
+          <p className="mb-5 mt-3 text-base md:text-lg">Select a ghost and reveal the city</p>
           <SightingsMap sightings={sightings} />
         </section>
       </div>

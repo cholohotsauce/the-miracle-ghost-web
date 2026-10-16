@@ -21,20 +21,18 @@ export type Show = {
 
 export const shows: Show[] = [
   {
-    title: "Sample: Ghost Story",
+    title: "Ghost Story",
     venue: "A gallery in Wynwood",
     city: "Miami, FL",
     start: "2026-12-04",
     end: "2026-12-07",
-    note: "Placeholder for an upcoming show. Swap in the real one.",
     sample: true,
   },
   {
-    title: "Sample: Glow in the Dark",
+    title: "Glow in the Dark",
     venue: "A pop-up in Little Haiti",
     city: "Miami, FL",
     start: "2025-12-05",
-    note: "Placeholder for a past show.",
     sample: true,
   },
 ];

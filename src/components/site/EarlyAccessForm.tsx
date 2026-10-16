@@ -12,18 +12,23 @@ const ERRORS: Record<number, string> = {
 };
 
 /**
- * Email sign-up for the next drop. `compact` is the one-line version inside the ghost's speech bubble.
+ * Email sign-up for the next drop. `compact` is the one-line version inside the ghost's speech bubble;
+ * `banner` is the white-on-black version in the Shop's drop banner.
  * Where sign-ups go: see app/api/early-access/route.ts.
  */
 export default function EarlyAccessForm({
   from,
   compact = false,
+  banner = false,
   prompt = "Want to know when the next drop lands?",
+  cta = "Tell me",
 }: {
   /** Where on the site the sign-up came from, e.g. "bubble" or "shop" */
   from: string;
   compact?: boolean;
+  banner?: boolean;
   prompt?: string;
+  cta?: string;
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -51,7 +56,10 @@ export default function EarlyAccessForm({
 
   if (status === "done") {
     return (
-      <p role="status" className={compact ? "font-mono text-xs uppercase tracking-[0.2em]" : "font-drip text-2xl uppercase"}>
+      <p
+        role="status"
+        className={compact ? "font-mono text-xs uppercase tracking-[0.2em]" : `font-drip text-2xl uppercase ${banner ? "text-[var(--color-neon-green)]" : ""}`}
+      >
         You&apos;re on the list. 👻
       </p>
     );
@@ -60,7 +68,16 @@ export default function EarlyAccessForm({
   const id = `early-access-${from}`;
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
-      <label htmlFor={id} className={compact ? "font-mono text-[11px] uppercase tracking-[0.2em]" : "font-mono text-xs uppercase tracking-[0.25em]"}>
+      <label
+        htmlFor={id}
+        className={
+          banner
+            ? "mb-1 text-lg font-medium md:text-xl"
+            : compact
+              ? "font-mono text-[11px] uppercase tracking-[0.2em]"
+              : "font-mono text-xs uppercase tracking-[0.25em]"
+        }
+      >
         {prompt}
       </label>
       <div className="flex gap-2">
@@ -72,16 +89,22 @@ export default function EarlyAccessForm({
           autoComplete="email"
           inputMode="email"
           placeholder="you@email.com"
-          className={`min-w-0 flex-1 rounded-full border-2 border-foreground bg-background px-4 text-base outline-none focus:shadow-[0_0_0_3px_var(--color-neon-green)] ${compact ? "h-10" : "h-12"}`}
+          className={`min-w-0 flex-1 rounded-full border-2 px-4 text-base outline-none focus:shadow-[0_0_0_3px_var(--color-neon-green)] ${
+            banner ? "border-background bg-foreground text-background placeholder:text-background/60" : "border-foreground bg-background"
+          } ${compact ? "h-10" : "h-12"}`}
         />
         {/* Spam trap: hidden from people, filled in by bots */}
         <input name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-px w-px opacity-0" />
         <button
           type="submit"
           disabled={status === "sending"}
-          className={`shrink-0 rounded-full bg-foreground px-5 font-mono text-xs uppercase tracking-[0.2em] text-background transition-shadow hover:shadow-[4px_4px_0_var(--color-neon-green)] disabled:opacity-40 ${compact ? "h-10" : "h-12"}`}
+          className={`shrink-0 rounded-full px-5 uppercase transition disabled:opacity-40 ${
+            banner
+              ? "bg-[var(--color-neon-green)] font-black tracking-wide text-foreground hover:scale-105 md:px-6 md:text-lg"
+              : "bg-foreground font-mono text-xs tracking-[0.2em] text-background hover:shadow-[4px_4px_0_var(--color-neon-green)]"
+          } ${compact ? "h-10" : "h-12"}`}
         >
-          {status === "sending" ? "…" : "Tell me"}
+          {status === "sending" ? "…" : cta}
         </button>
       </div>
       {status === "error" && (
