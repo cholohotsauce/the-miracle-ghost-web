@@ -1,9 +1,9 @@
 /** Contact form topics, in the order the buttons appear */
 export const CONTACT_TOPICS = [
-  { id: "commission", label: "Commission", hint: "A piece made for you or your wall." },
-  { id: "collab", label: "Collab", hint: "Brands, artists, drops." },
-  { id: "press", label: "Press", hint: "Interviews, features, podcasts." },
-  { id: "other", label: "Other", hint: "Anything else. Keep it short." },
+  { id: "commission", label: "Commissions" },
+  { id: "collab", label: "Collaborations" },
+  { id: "press", label: "Press" },
+  { id: "other", label: "Other" },
 ] as const;
 
 export type ContactTopic = (typeof CONTACT_TOPICS)[number]["id"];

@@ -21,6 +21,7 @@
   --color-neon-pink: #ff00ff;  /* Glowing pink */
   --color-neon-teal: #00ffff;  /* Electric teal */
   --color-sleepy-blue: #3b82f6; /* The sleeping ghost's Z's */
+  --color-drip-red: #e10b1f; /* Paint running off the Shop title */
 
   --font-sans: var(--font-geist-sans), "Inter", "Roboto", "Outfit", Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);

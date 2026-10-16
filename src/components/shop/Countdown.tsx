@@ -9,7 +9,17 @@ const pad = (n: number) => String(n).padStart(2, "0");
  * Days, hours, minutes, seconds until a drop. Renders dashes until the browser takes over,
  * so the server and the browser never disagree about the time. Refreshes the page when it hits zero.
  */
-export default function Countdown({ to, className = "" }: { to: string; className?: string }) {
+export default function Countdown({
+  to,
+  className = "",
+  numberClassName = "font-mono text-3xl font-black md:text-4xl",
+  labelClassName = "font-mono text-[10px] tracking-[0.25em] opacity-60",
+}: {
+  to: string;
+  className?: string;
+  numberClassName?: string;
+  labelClassName?: string;
+}) {
   const router = useRouter();
   const target = new Date(to).getTime();
   const [now, setNow] = useState<number | null>(null);
@@ -41,12 +51,12 @@ export default function Countdown({ to, className = "" }: { to: string; classNam
     <div
       role="timer"
       aria-label={left === null ? "Countdown" : `${parts[0]} days ${parts[1]} hours ${parts[2]} minutes left`}
-      className={`flex gap-3 font-mono tabular-nums ${className}`}
+      className={`flex gap-3 tabular-nums ${className}`}
     >
       {parts.map((p, i) => (
         <div key={labels[i]} className="flex flex-col items-center">
-          <span className="text-3xl font-black leading-none md:text-4xl">{p}</span>
-          <span className="mt-1 text-[10px] uppercase tracking-[0.25em] opacity-60">{labels[i]}</span>
+          <span className={`leading-none ${numberClassName}`}>{p}</span>
+          <span className={`mt-1 uppercase ${labelClassName}`}>{labels[i]}</span>
         </div>
       ))}
     </div>
