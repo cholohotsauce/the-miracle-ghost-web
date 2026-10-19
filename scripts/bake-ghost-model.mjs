@@ -1,10 +1,10 @@
-// Bakes Aes's ZBrush ghost (.obj with polypaint) into the files the site loads:
+// Bakes Aes's ghost (the 3D artist's GLB: a front-projected face texture on an off-white body) into the files the site loads:
 //   public/models/miracle-ghost.glb    decimated, meshopt-compressed mesh with a _DEPTH attribute
-//   public/models/miracle-ghost-face.png  his painted face, projected from the front (R = eyes, G = mouth)
+//   public/models/miracle-ghost-face.png  the painted face, seen from the front (R = eyes, G = mouth ink, B = white teeth)
 //   public/models/miracle-ghost-halo.png  soft glow around the silhouette
-//   src/components/ghost/modelBake.ts    where those maps sit in model space, plus drip tips
+//   src/components/ghost/modelBake.ts    where those maps sit in model space, the face landmarks, and drip tips
 //
-// Usage: node scripts/bake-ghost-model.mjs "<path to .obj>" [targetTriangles]
+// Usage: node scripts/bake-ghost-model.mjs "<path to .glb>" [targetTriangles]
 
 import fs from "node:fs";
 import path from "node:path";
@@ -12,11 +12,11 @@ import zlib from "node:zlib";
 import { Document, NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { meshopt } from "@gltf-transform/functions";
-import { MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
+import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
 
-const [objPath, targetArg] = process.argv.slice(2);
-if (!objPath) {
-  console.error('Usage: node scripts/bake-ghost-model.mjs "<path to .obj>" [targetTriangles]');
+const [srcPath, targetArg] = process.argv.slice(2);
+if (!srcPath || !/\.glb$/i.test(srcPath)) {
+  console.error('Usage: node scripts/bake-ghost-model.mjs "<path to .glb>" [targetTriangles]');
   process.exit(1);
 }
 const TARGET_TRIANGLES = Number(targetArg ?? 28000);
@@ -30,40 +30,124 @@ const MAP_HALF = 2.5;
 const DEPTH_RES = 1024;
 const HALO_RES = 256;
 const FACE_RES = 1024;
-// Polypaint darker than this counts as face linework
+// Texture darker than this counts as face linework
 const INK_THRESHOLD = 0.5;
+// Texture brighter than this counts as the white of the teeth (the body is about 0.91)
+const TEETH_THRESHOLD = 0.955;
 
-// ---------- OBJ with ZBrush polypaint (#MRGB rows hold MMRRGGBB per vertex) ----------
+// ---------- GLB: one mesh, any number of primitives, the face texture on one of them ----------
 
-function parseObj(file) {
-  const text = fs.readFileSync(file, "utf8");
+async function parseGlb(file) {
+  await MeshoptDecoder.ready;
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "meshopt.decoder": MeshoptDecoder });
+  const doc = await io.read(file);
   const pos = [];
-  const lum = [];
+  const uv = [];
   const idx = [];
-  for (const line of text.split("\n")) {
-    if (line.startsWith("v ")) {
-      const p = line.split(/\s+/);
-      pos.push(+p[1], +p[2], +p[3]);
-    } else if (line.startsWith("f ")) {
-      const p = line.trim().split(/\s+/).slice(1).map((s) => parseInt(s, 10) - 1);
-      for (let k = 1; k + 1 < p.length; k++) idx.push(p[0], p[k], p[k + 1]);
-    } else if (line.startsWith("#MRGB ")) {
-      const s = line.slice(6).trim();
-      for (let i = 0; i + 8 <= s.length; i += 8) {
-        const r = parseInt(s.slice(i + 2, i + 4), 16);
-        const g = parseInt(s.slice(i + 4, i + 6), 16);
-        const b = parseInt(s.slice(i + 6, i + 8), 16);
-        lum.push((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255);
+  let image;
+  // Primitives often share one vertex list; read each list once
+  const bases = new Map();
+  for (const mesh of doc.getRoot().listMeshes()) {
+    for (const prim of mesh.listPrimitives()) {
+      const p = prim.getAttribute("POSITION");
+      const t = prim.getAttribute("TEXCOORD_0");
+      let base = bases.get(p);
+      if (base === undefined) {
+        base = pos.length / 3;
+        bases.set(p, base);
+        for (let i = 0; i < p.getCount(); i++) {
+          pos.push(...p.getElement(i, []));
+          uv.push(...(t ? t.getElement(i, []) : [-1, -1]));
+        }
       }
+      const indices = prim.getIndices();
+      const count = indices ? indices.getCount() : p.getCount();
+      for (let i = 0; i < count; i++) idx.push(base + (indices ? indices.getScalar(i) : i));
+      image ??= prim.getMaterial()?.getBaseColorTexture()?.getImage();
     }
   }
-  const count = pos.length / 3;
-  const luminance = new Float32Array(count).fill(1);
-  luminance.set(lum.slice(0, count));
-  return { pos: new Float32Array(pos), lum: luminance, idx: new Uint32Array(idx) };
+  if (!image) throw new Error("No base color texture: the face must be painted into the GLB's texture");
+  const { pos: welded, idx: weldedIdx, uv: weldedUv } = weld(new Float32Array(pos), new Uint32Array(idx), new Float32Array(uv));
+  return { pos: welded, idx: weldedIdx, uv: weldedUv, texture: decodePng(Buffer.from(image)) };
 }
 
-/** Centers the model and scales it to MODEL_HEIGHT. ZBrush exports +Y up and +Z toward the viewer. */
+/** Merge vertices stored more than once at the same spot (seams between primitives) so decimation sees one closed surface. */
+function weld(pos, idx, uv) {
+  const map = new Map();
+  const remap = new Uint32Array(pos.length / 3);
+  const outPos = [];
+  const outUv = [];
+  for (let i = 0; i < remap.length; i++) {
+    const key = `${pos[i * 3]},${pos[i * 3 + 1]},${pos[i * 3 + 2]}`;
+    let j = map.get(key);
+    if (j === undefined) {
+      j = outPos.length / 3;
+      map.set(key, j);
+      outPos.push(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+      outUv.push(uv[i * 2], uv[i * 2 + 1]);
+    } else if (outUv[j * 2] < 0) {
+      outUv[j * 2] = uv[i * 2];
+      outUv[j * 2 + 1] = uv[i * 2 + 1];
+    }
+    remap[i] = j;
+  }
+  return { pos: new Float32Array(outPos), idx: idx.map((i) => remap[i]), uv: new Float32Array(outUv) };
+}
+
+/** Minimal PNG reader: 8-bit gray, gray+alpha, RGB or RGBA, not interlaced. Returns luminance in 0..1. */
+function decodePng(buf) {
+  let w = 0;
+  let h = 0;
+  let type = 0;
+  const data = [];
+  for (let o = 8; o < buf.length; ) {
+    const len = buf.readUInt32BE(o);
+    const kind = buf.toString("ascii", o + 4, o + 8);
+    const body = buf.subarray(o + 8, o + 8 + len);
+    if (kind === "IHDR") {
+      w = body.readUInt32BE(0);
+      h = body.readUInt32BE(4);
+      type = body[9];
+      if (body[8] !== 8 || body[12] !== 0) throw new Error("Face texture must be an 8-bit, non-interlaced PNG");
+    } else if (kind === "IDAT") data.push(body);
+    o += 12 + len;
+  }
+  const channels = { 0: 1, 2: 3, 4: 2, 6: 4 }[type];
+  if (!channels) throw new Error(`Unsupported PNG color type ${type}`);
+  const raw = zlib.inflateSync(Buffer.concat(data));
+  const stride = w * channels;
+  const px = new Uint8Array(stride * h);
+  for (let y = 0; y < h; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let x = 0; x < stride; x++) {
+      const a = x >= channels ? px[y * stride + x - channels] : 0;
+      const b = y > 0 ? px[(y - 1) * stride + x] : 0;
+      const c = x >= channels && y > 0 ? px[(y - 1) * stride + x - channels] : 0;
+      let v = line[x];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      }
+      px[y * stride + x] = v & 255;
+    }
+  }
+  const lum = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const k = i * channels;
+    lum[i] =
+      channels < 3 ? px[k] / 255 : (0.2126 * px[k] + 0.7152 * px[k + 1] + 0.0722 * px[k + 2]) / 255;
+  }
+  return { w, h, lum };
+}
+
+/** Centers the model and scales it to MODEL_HEIGHT. glTF is +Y up with the ghost facing +Z, toward the viewer. */
 function normalize(pos) {
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
@@ -310,8 +394,8 @@ const round = (v, d = 4) => Number(v.toFixed(d));
 
 // ---------- Bake ----------
 
-console.log("Reading", objPath);
-const src = parseObj(objPath);
+console.log("Reading", srcPath);
+const src = await parseGlb(srcPath);
 const { size } = normalize(src.pos);
 console.log(`  ${src.pos.length / 3} vertices, ${src.idx.length / 3} triangles, size ${size.map((s) => s.toFixed(2))}`);
 
@@ -341,14 +425,46 @@ const distOut = distanceTo(inside, DEPTH_RES, DEPTH_RES).map((d) => d * pxSize);
   writePng(path.join(OUT_DIR, "miracle-ghost-halo.png"), HALO_RES, HALO_RES, halo);
 }
 
-// 3. Face: find the ink, then render it from the front at high resolution, eyes and mouth apart
+// 3. Face: look at the painted texture from the front, find the ink, then render it at high resolution, eyes and mouth apart
+
+/** The face texture as seen from the front inside rect: ink (dark linework) and teeth (bright white) per pixel. */
+function lookAtFace(rect, w, h) {
+  const uvAt = (c) => (a, b, d, w0, w1, w2) => {
+    // Untextured triangles show no face
+    if (src.uv[a * 2] < 0 || src.uv[b * 2] < 0 || src.uv[d * 2] < 0) return -1;
+    return w0 * src.uv[a * 2 + c] + w1 * src.uv[b * 2 + c] + w2 * src.uv[d * 2 + c];
+  };
+  const { out: u, covered } = rasterFront(src.pos, src.idx, rect, w, h, uvAt(0));
+  const { out: v } = rasterFront(src.pos, src.idx, rect, w, h, uvAt(1));
+  const { w: tw, h: th, lum } = src.texture;
+  const ink = new Float32Array(w * h);
+  const teeth = new Float32Array(w * h);
+  for (let k = 0; k < w * h; k++) {
+    if (!covered[k] || u[k] < 0 || v[k] < 0) continue;
+    const l = bilinear(lum, tw, th, u[k] * tw, v[k] * th);
+    ink[k] = smoothstep(INK_THRESHOLD + 0.25, INK_THRESHOLD - 0.25, l);
+    teeth[k] = smoothstep(TEETH_THRESHOLD - 0.02, TEETH_THRESHOLD + 0.02, l);
+  }
+  return { ink, teeth };
+}
+function smoothstep(e0, e1, x) {
+  const t = Math.min(Math.max((x - e0) / (e1 - e0), 0), 1);
+  return t * t * (3 - 2 * t);
+}
+
 let inkMin = [Infinity, Infinity];
 let inkMax = [-Infinity, -Infinity];
-for (let i = 0; i < src.lum.length; i++) {
-  if (src.lum[i] >= INK_THRESHOLD || src.pos[i * 3 + 2] < 0) continue;
-  inkMin = [Math.min(inkMin[0], src.pos[i * 3]), Math.min(inkMin[1], src.pos[i * 3 + 1])];
-  inkMax = [Math.max(inkMax[0], src.pos[i * 3]), Math.max(inkMax[1], src.pos[i * 3 + 1])];
+{
+  const { ink: coarse } = lookAtFace(mapRect, DEPTH_RES, DEPTH_RES);
+  for (let k = 0; k < coarse.length; k++) {
+    if (coarse[k] < 0.3) continue;
+    const x = mapRect.minX + ((k % DEPTH_RES) + 0.5) * pxSize;
+    const y = mapRect.maxY - (Math.floor(k / DEPTH_RES) + 0.5) * pxSize;
+    inkMin = [Math.min(inkMin[0], x), Math.min(inkMin[1], y)];
+    inkMax = [Math.max(inkMax[0], x), Math.max(inkMax[1], y)];
+  }
 }
+if (!Number.isFinite(inkMin[0])) throw new Error("No dark linework found in the face texture");
 const pad = 0.12;
 const faceSpan = Math.max(inkMax[0] - inkMin[0], inkMax[1] - inkMin[1]) + pad * 2;
 const faceCx = (inkMin[0] + inkMax[0]) / 2;
@@ -359,16 +475,9 @@ const faceRect = {
   minY: faceCy - faceSpan / 2,
   maxY: faceCy + faceSpan / 2,
 };
-const { out: ink } = rasterFront(src.pos, src.idx, faceRect, FACE_RES, FACE_RES, (a, b, c, w0, w1, w2) => {
-  const l = w0 * src.lum[a] + w1 * src.lum[b] + w2 * src.lum[c];
-  return smoothstep(INK_THRESHOLD + 0.25, INK_THRESHOLD - 0.25, l);
-});
-function smoothstep(e0, e1, x) {
-  const t = Math.min(Math.max((x - e0) / (e1 - e0), 0), 1);
-  return t * t * (3 - 2 * t);
-}
+const { ink, teeth } = lookAtFace(faceRect, FACE_RES, FACE_RES);
 
-// The two tallest marks are the eyes; everything else is the mouth
+// The two most upright marks are the eyes; everything else is the mouth
 const { label, boxes } = components(
   ink.map((v) => (v > 0.15 ? 1 : 0)),
   FACE_RES,
@@ -379,8 +488,10 @@ const eyes = [...marks]
   .sort((a, b) => (b.maxY - b.minY) / (b.maxX - b.minX + 1) - (a.maxY - a.minY) / (a.maxX - a.minX + 1))
   .slice(0, 2)
   .sort((a, b) => a.minX - b.minX);
-if (eyes.length < 2) throw new Error("Could not find two eyes in the polypaint");
+if (eyes.length < 2) throw new Error("Could not find two eyes in the face texture");
 const eyeIds = new Set(eyes.map((e) => e.id));
+const mouthMarks = marks.filter((b) => !eyeIds.has(b.id));
+if (!mouthMarks.length) throw new Error("Could not find the mouth in the face texture");
 // Let antialiased fringe pixels follow their nearest labelled neighbour
 const fringeLabel = (k) => {
   if (label[k] >= 0) return label[k];
@@ -402,11 +513,9 @@ const fringeLabel = (k) => {
 {
   const face = new Uint8Array(FACE_RES * FACE_RES * 4);
   for (let k = 0; k < FACE_RES * FACE_RES; k++) {
-    if (ink[k] <= 0) continue;
-    const v = Math.round(ink[k] * 255);
-    const l = fringeLabel(k);
-    face[k * 4 + (eyeIds.has(l) ? 0 : 1)] = v;
-    face[k * 4 + 3] = 255;
+    if (ink[k] > 0) face[k * 4 + (eyeIds.has(fringeLabel(k)) ? 0 : 1)] = Math.round(ink[k] * 255);
+    face[k * 4 + 2] = Math.round(teeth[k] * 255);
+    if (ink[k] > 0 || teeth[k] > 0) face[k * 4 + 3] = 255;
   }
   writePng(path.join(OUT_DIR, "miracle-ghost-face.png"), FACE_RES, FACE_RES, face);
 }
@@ -414,11 +523,69 @@ const pxToFace = (px, py) => [
   faceRect.minX + ((px + 0.5) / FACE_RES) * faceSpan,
   faceRect.maxY - ((py + 0.5) / FACE_RES) * faceSpan,
 ];
+
+// Each eye's box, and the two ends of its stroke
+const rowCenter = (id, py) => {
+  let sum = 0;
+  let n = 0;
+  for (let px = 0; px < FACE_RES; px++) {
+    if (label[py * FACE_RES + px] === id) {
+      sum += px;
+      n++;
+    }
+  }
+  return pxToFace(sum / n, py);
+};
 const eyeBoxes = eyes.map((e) => {
   const [x0, y1] = pxToFace(e.minX, e.minY);
   const [x1, y0] = pxToFace(e.maxX, e.maxY);
-  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, halfW: (x1 - x0) / 2, halfH: (y1 - y0) / 2 };
+  return {
+    cx: (x0 + x1) / 2,
+    cy: (y0 + y1) / 2,
+    halfW: (x1 - x0) / 2,
+    halfH: (y1 - y0) / 2,
+    top: rowCenter(e.id, e.minY),
+    bottom: rowCenter(e.id, e.maxY),
+  };
 });
+
+// The mouth's outline, and the tooth just right of the middle, which turns gold
+const mouthBox = mouthMarks.reduce((m, b) => ({
+  minX: Math.min(m.minX, b.minX),
+  maxX: Math.max(m.maxX, b.maxX),
+  minY: Math.min(m.minY, b.minY),
+  maxY: Math.max(m.maxY, b.maxY),
+}));
+const isTooth = (px, py) => teeth[py * FACE_RES + px] > 0.5;
+const midPx = Math.round((mouthBox.minX + mouthBox.maxX) / 2);
+// The lowest point of the upper lip, beside the line down the middle
+const nearMid = (py) => [-8, -6, -4, 4, 6, 8].some((dx) => isTooth(midPx + dx, py));
+let lipPx = mouthBox.minY;
+while (lipPx < mouthBox.maxY && !nearMid(lipPx)) lipPx++;
+const panelRow = Math.round(lipPx + 0.2 * (mouthBox.maxY - lipPx));
+const panels = [];
+for (let px = mouthBox.minX; px <= mouthBox.maxX; px++) {
+  if (!isTooth(px, panelRow)) continue;
+  const start = px;
+  while (px <= mouthBox.maxX && isTooth(px, panelRow)) px++;
+  panels.push([start, px - 1]);
+}
+const goldPanel = panels.find(([x0]) => x0 >= midPx - 3);
+if (!goldPanel) throw new Error("Could not find the painted teeth");
+const goldMidPx = Math.round((goldPanel[0] + goldPanel[1]) / 2);
+let goldTopPx = mouthBox.minY;
+while (goldTopPx < mouthBox.maxY && !isTooth(goldMidPx, goldTopPx)) goldTopPx++;
+let goldBottomPx = mouthBox.maxY;
+while (goldBottomPx > goldTopPx && !isTooth(goldMidPx, goldBottomPx)) goldBottomPx--;
+const [mouthMinX, mouthTop] = pxToFace(mouthBox.minX, mouthBox.minY);
+const [mouthMaxX, mouthBottom] = pxToFace(mouthBox.maxX, mouthBox.maxY);
+const mouth = { top: mouthTop, bottom: mouthBottom, cx: (mouthMinX + mouthMaxX) / 2, halfW: (mouthMaxX - mouthMinX) / 2 };
+const goldTooth = {
+  minX: pxToFace(goldPanel[0], 0)[0],
+  maxX: pxToFace(goldPanel[1], 0)[0],
+  top: pxToFace(0, goldTopPx)[1],
+  bottom: pxToFace(0, goldBottomPx)[1],
+};
 
 // 4. Drip tips: the low points of the silhouette's hem, where droplets bead and fall
 const dripTips = [];
@@ -482,7 +649,7 @@ await io.write(glbPath, doc);
 const rect = (r) => `{ minX: ${round(r.minX)}, maxX: ${round(r.maxX)}, minY: ${round(r.minY)}, maxY: ${round(r.maxY)} }`;
 fs.writeFileSync(
   path.join(ROOT, "src/components/ghost/modelBake.ts"),
-  `// Generated by scripts/bake-ghost-model.mjs from Aes's ZBrush export. Do not edit by hand.
+  `// Generated by scripts/bake-ghost-model.mjs from Aes's ghost GLB. Do not edit by hand.
 
 export const MODEL_URL = "/models/miracle-ghost.glb";
 export const FACE_MAP_URL = "/models/miracle-ghost-face.png";
@@ -494,10 +661,16 @@ export const MODEL_SIZE = { x: ${round(size[0], 3)}, y: ${round(size[1], 3)}, z:
 /** Where the front-projected face map sits in model XY */
 export const FACE_RECT = ${rect(faceRect)};
 
-/** Each painted eye in model XY, left then right, for blinking */
+/** Each painted eye in model XY, left then right: its box (for blinking) and the two ends of its stroke */
 export const EYES = [
-${eyeBoxes.map((e) => `  { cx: ${round(e.cx)}, cy: ${round(e.cy)}, halfW: ${round(e.halfW)}, halfH: ${round(e.halfH)} },`).join("\n")}
+${eyeBoxes.map((e) => `  { cx: ${round(e.cx)}, cy: ${round(e.cy)}, halfW: ${round(e.halfW)}, halfH: ${round(e.halfH)}, top: [${e.top.map((v) => round(v)).join(", ")}], bottom: [${e.bottom.map((v) => round(v)).join(", ")}] },`).join("\n")}
 ] as const;
+
+/** The painted grin in model XY: its corners reach y = top, its point y = bottom */
+export const MOUTH = { top: ${round(mouth.top)}, bottom: ${round(mouth.bottom)}, cx: ${round(mouth.cx)}, halfW: ${round(mouth.halfW)} };
+
+/** The painted tooth just right of the middle, which turns gold */
+export const GOLD_TOOTH = ${rect({ minX: goldTooth.minX, maxX: goldTooth.maxX, minY: goldTooth.bottom, maxY: goldTooth.top })};
 
 /** Where the halo map sits in model XY */
 export const HALO_RECT = ${rect(mapRect)};
@@ -511,3 +684,4 @@ for (const f of ["miracle-ghost.glb", "miracle-ghost-face.png", "miracle-ghost-h
   console.log(`  ${f}: ${(fs.statSync(path.join(OUT_DIR, f)).size / 1024).toFixed(1)} KB`);
 }
 console.log("  drip tips", JSON.stringify(drips), "eyes", JSON.stringify(eyeBoxes.map((e) => [round(e.cx, 3), round(e.cy, 3)])));
+console.log("  mouth", JSON.stringify(mouth), "gold tooth", JSON.stringify(goldTooth), "teeth panels", panels.length);

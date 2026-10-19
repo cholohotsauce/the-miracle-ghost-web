@@ -1,24 +1,21 @@
 import * as THREE from "three";
-import { EYES, FACE_RECT } from "./modelBake";
+import { EYES, FACE_RECT, GOLD_TOOTH, MOUTH } from "./modelBake";
 
 /**
  * Aes's ghost as matte grey clay on a white page, like the render in his prototype video.
- * The face is his own polypainted linework, projected from the front (see modelBake.ts).
- * On top of the clay: a grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
+ * The face is the 3D artist's painted texture seen from the front (see modelBake.ts): V eyes and a pointed grin full of white teeth.
+ * On top of the clay: a wider grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
  * plus the extras a few tricks paint on: sunglasses, a gold tooth, flames and soot, a groggy waking face, worried brows,
  * spiral dizzy eyes, an electric shock, and TV static with an old-TV switch-off.
  * Colors are passed as sRGB triples and written out as-is.
  */
 
-/**
- * The painted smile on miracle-ghost-face.png, in model XY. Measured from the face map:
- * a circular arc whose ends sit on y = top and whose lowest point is at x = 0.
- * Re-measure if Aes sends a new sculpt with a different face.
- */
-const MOUTH = { top: 0.1485, cy: 0.3537, r: 0.3528, halfW: 0.287 };
+/** Where the sunglasses come to rest on the face, in model Y: across the upper part of the eyes */
+const SHADES_Y = EYES[1].bottom[1] + 0.7 * (EYES[1].top[1] - EYES[1].bottom[1]);
 
-/** Where the sunglasses come to rest on the face, in model Y */
-const SHADES_Y = 0.5;
+/** How far a full grin widens and lengthens the painted mouth */
+const GRIN_WIDEN = 0.3;
+const GRIN_LENGTHEN = 0.12;
 
 const vertexShader = /* glsl */ `
   // Distance in from the silhouette's edge, baked per vertex
@@ -66,6 +63,8 @@ const fragmentShader = /* glsl */ `
   uniform vec4 uEyeL;
   uniform vec4 uEyeR;
   uniform vec4 uMouth;
+  uniform vec4 uGoldTooth;
+  uniform vec4 uEyeEnds;
   uniform float uShades;
   uniform float uTooth;
   uniform float uGlint;
@@ -136,54 +135,57 @@ const fragmentShader = /* glsl */ `
       float curve = -eye.w * 0.55 + 5.3 * q.x * q.x;
       float stroke = 1.0 - smoothstep(0.008, 0.013, abs(q.y - curve));
       float ends = 1.0 - smoothstep(halfW - 0.006, halfW, abs(q.x));
-      open = max(open, closed * stroke * ends);
+      // The stub of the painted eye left under the lid fades as the closed curve takes over
+      open = max(open * (1.0 - closed), closed * stroke * ends);
     }
     return open;
   }
 
-  // The face point f in the smile's own space, undoing the grin's stretch
+  // The face point f in the painted mouth's own space, undoing the grin's stretch (it hangs from the corners)
   vec2 mouthSpace(vec2 f) {
     float top = uMouth.x;
-    return vec2(f.x / (1.0 + 0.3 * uGrin), top + (f.y - top) / (1.0 + 0.45 * uGrin));
+    return vec2(uMouth.z + (f.x - uMouth.z) / (1.0 + ${GRIN_WIDEN.toFixed(3)} * uGrin), top + (f.y - top) / (1.0 + ${GRIN_LENGTHEN.toFixed(3)} * uGrin));
   }
-
-  // The area between the smile's arc and the line joining its ends
-  float mouthHole(vec2 p) {
-    float inside = 1.0 - smoothstep(uMouth.z - 0.008, uMouth.z, length(p - vec2(0.0, uMouth.y)));
-    float below = 1.0 - smoothstep(uMouth.x - 0.006, uMouth.x + 0.002, p.y);
-    return inside * below;
-  }
-
-  // The smile: widens and deepens into an open grin, or flips into a frown (open, it is a scream)
-  float mouthInk(vec2 f) {
+  vec2 fromMouthSpace(vec2 p) {
     float top = uMouth.x;
-    vec2 p = mouthSpace(f);
-
-    float lowest = uMouth.y - uMouth.z;
-    vec2 flipped = vec2(p.x, top + lowest - p.y);
-    // A quick crossfade, so the smile and frown never sit on the face together for long
-    float flip = smoothstep(0.3, 0.7, uFrown);
-    float line = mix(texture2D(uFaceMap, faceUv(p)).g, texture2D(uFaceMap, faceUv(flipped)).g, flip);
-
-    float open = mix(mouthHole(p), mouthHole(flipped), flip) * smoothstep(0.15, 0.6, uGrin);
-    return max(line, open);
+    return vec2(uMouth.z + (p.x - uMouth.z) * (1.0 + ${GRIN_WIDEN.toFixed(3)} * uGrin), top + (p.y - top) * (1.0 + ${GRIN_LENGTHEN.toFixed(3)} * uGrin));
   }
 
-  // One gold tooth hanging from the top of the open grin, off to one side. Returns (shade, mask).
+  // The mouth turned upside down for a frown, squeezed in below the eyes so its point stays clear of them
+  vec2 frownSpace(vec2 p) {
+    float top = uMouth.x;
+    float bottom = uMouth.y;
+    float point = uEyeEnds.w - 0.08;
+    return vec2(p.x, bottom + (point - p.y) * (top - bottom) / (point - bottom));
+  }
+
+  // The painted grin: widens and lengthens with uGrin, or flips into a frown (open, it is a scream).
+  // Returns (ink, white of the teeth).
+  vec2 mouth(vec2 f) {
+    vec2 p = mouthSpace(f);
+    // A quick crossfade, so the grin and frown never sit on the face together for long
+    float flip = smoothstep(0.3, 0.7, uFrown);
+    vec2 a = texture2D(uFaceMap, faceUv(p)).gb;
+    vec2 b = flip > 0.0 ? texture2D(uFaceMap, faceUv(frownSpace(p))).gb : vec2(0.0);
+    return mix(a, b, flip);
+  }
+
+  // The painted tooth just right of the middle, turned gold. Returns (shade, mask).
   vec2 goldTooth(vec2 f) {
     vec2 p = mouthSpace(f);
-    vec2 q = p - vec2(0.085, uMouth.x - 0.05);
-    float d = sdRoundBox(q, vec2(0.042, 0.05), 0.018);
-    float mask = (1.0 - smoothstep(-0.002, 0.004, d)) * mouthHole(p) * smoothstep(0.3, 0.7, uGrin) * uTooth;
-    // A bright band across the tooth that slides down as it catches the light
-    float band = smoothstep(0.03, 0.0, abs(q.y - 0.03 + 0.1 * uGlint));
-    float shade = 0.75 + 0.35 * (q.y / 0.05) + 0.6 * band;
+    float inside = step(uGoldTooth.x, p.x) * step(p.x, uGoldTooth.y);
+    float mask = texture2D(uFaceMap, faceUv(p)).b * inside * uTooth * (1.0 - smoothstep(0.3, 0.7, uFrown));
+    // Darker toward the point, with a bright band that slides down as it catches the light
+    float t = (p.y - uGoldTooth.z) / (uGoldTooth.w - uGoldTooth.z);
+    float bandY = mix(uGoldTooth.w - 0.05, uGoldTooth.z + 0.1, uGlint);
+    float band = smoothstep(0.06, 0.0, abs(p.y - bandY));
+    float shade = 0.55 + 0.5 * t + 0.6 * band;
     return vec2(shade, mask);
   }
 
   // A four-point star where the tooth catches the light
   float sparkle(vec2 f) {
-    vec2 p = vec2(0.085 * (1.0 + 0.3 * uGrin), uMouth.x - 0.03 * (1.0 + 0.45 * uGrin));
+    vec2 p = fromMouthSpace(vec2(0.5 * (uGoldTooth.x + uGoldTooth.y), uGoldTooth.w - 0.08));
     vec2 q = (f - p) / max(uGlint, 0.001);
     float arms = exp(-abs(q.x) * 90.0) * exp(-abs(q.y) * 9.0) + exp(-abs(q.y) * 90.0) * exp(-abs(q.x) * 9.0);
     vec2 r = mat2(0.7071, -0.7071, 0.7071, 0.7071) * q;
@@ -215,9 +217,9 @@ const fragmentShader = /* glsl */ `
   // Cartoon dizzy eyes: a spinning spiral over each eye
   float dizzyInk(vec2 f, vec2 eyeR) {
     if (uDizzy <= 0.0) return 0.0;
-    vec2 q = vec2(abs(f.x) - abs(eyeR.x), f.y - 0.62);
+    vec2 q = vec2(abs(f.x) - abs(eyeR.x), f.y - eyeR.y - 0.1);
     float r = length(q);
-    float radius = 0.14;
+    float radius = min(0.14, abs(eyeR.x) - 0.012);
     if (r > radius + 0.02) return 0.0;
     // Spin opposite ways in each eye
     float a = atan(q.y, q.x) * sign(f.x) + uTime * 9.0;
@@ -226,14 +228,12 @@ const fragmentShader = /* glsl */ `
     return stroke(line, 0.01) * (1.0 - smoothstep(radius - 0.01, radius, r)) * smoothstep(0.3, 0.6, uDizzy);
   }
 
-  // The groggy waking face, from Aes's sketch: squinting V eyes
-  float wakeInk(vec2 f, vec2 eyeR) {
+  // The groggy waking face: a lower lid runs out from the bottom of each eye, squeezing it into a squint
+  float wakeInk(vec2 f) {
     if (uWake <= 0.0) return 0.0;
     vec2 m = vec2(abs(f.x), f.y);
-    vec2 eye = vec2(abs(eyeR.x), eyeR.y);
-    float bottom = 0.17;
-    // A second stroke from the bottom of each eye, angled outward, makes the V
-    float v = sdSegment(m, vec2(eye.x, bottom), vec2(eye.x + 0.13 * uWake, bottom + 0.34));
+    vec2 bottom = uEyeEnds.zw;
+    float v = sdSegment(m, bottom, bottom + vec2(0.12, 0.2) * uWake);
     return stroke(v, 0.017) * smoothstep(0.0, 0.4, uWake);
   }
 
@@ -241,10 +241,11 @@ const fragmentShader = /* glsl */ `
   float browInk(vec2 f) {
     if (uBrow <= 0.0) return 0.0;
     vec2 m = vec2(abs(f.x), f.y);
-    float lift = 0.07 * uBrow;
-    vec2 a = vec2(0.06, 1.03 + lift);
-    vec2 b = vec2(0.19, 0.95 + lift);
-    vec2 c = vec2(0.31, 0.92 + lift);
+    // Just above the tops of the eyes
+    vec2 top = uEyeEnds.xy + vec2(0.0, 0.07 * uBrow + 0.05);
+    vec2 a = top + vec2(-0.18, 0.08);
+    vec2 b = top + vec2(-0.05, 0.0);
+    vec2 c = top + vec2(0.07, -0.03);
     float brow = min(sdSegment(m, a, b), sdSegment(m, b, c));
     return stroke(brow, 0.016) * smoothstep(0.0, 0.4, uBrow);
   }
@@ -295,10 +296,14 @@ const fragmentShader = /* glsl */ `
     // Face: Aes's painted eyes and smile, in ink, plus whatever the trick adds
     if (vFront > 0.01) {
       vec2 f = vShape - uLook;
-      float ink = max(mouthInk(f), max(eyeInk(f, uEyeL), eyeInk(f, uEyeR)));
-      ink = max(ink, max(max(wakeInk(f, uEyeR.xy), browInk(f)), dizzyInk(f, uEyeR.xy))) * vFront;
+      vec2 m = mouth(f);
+      float ink = max(m.x, max(eyeInk(f, uEyeL), eyeInk(f, uEyeR)));
+      ink = max(ink, max(max(wakeInk(f), browInk(f)), dizzyInk(f, uEyeR.xy))) * vFront;
       // Under TV static the face fades into the snow
       ink *= 1.0 - 0.75 * uTv;
+      // The teeth: bright white, softly shaded, and gone on a glowing or blacked-out body so the white ink still shows
+      float teeth = m.y * vFront * (1.0 - 0.75 * uTv) * (1.0 - max(uGlow * 0.85, uShock));
+      color = mix(color, vec3(0.97) * (0.9 + 0.1 * wrap), teeth);
       // Ink turns white on a glowing or blacked-out body
       vec3 inkColor = mix(vec3(0.05), vec3(1.0), max(uGlow * 0.9, uShock));
       color = mix(color, inkColor, ink);
@@ -347,6 +352,8 @@ export type GhostUniforms = {
   uEyeL: { value: THREE.Vector4 };
   uEyeR: { value: THREE.Vector4 };
   uMouth: { value: THREE.Vector4 };
+  uGoldTooth: { value: THREE.Vector4 };
+  uEyeEnds: { value: THREE.Vector4 };
   uShades: { value: number };
   uTooth: { value: number };
   uGlint: { value: number };
@@ -385,7 +392,10 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     },
     uEyeL: { value: eye(0) },
     uEyeR: { value: eye(1) },
-    uMouth: { value: new THREE.Vector4(MOUTH.top, MOUTH.cy, MOUTH.r, MOUTH.halfW) },
+    uMouth: { value: new THREE.Vector4(MOUTH.top, MOUTH.bottom, MOUTH.cx, MOUTH.halfW) },
+    uGoldTooth: { value: new THREE.Vector4(GOLD_TOOTH.minX, GOLD_TOOTH.maxX, GOLD_TOOTH.minY, GOLD_TOOTH.maxY) },
+    // The right eye's top and bottom ends; the left eye mirrors it
+    uEyeEnds: { value: new THREE.Vector4(...EYES[1].top, ...EYES[1].bottom) },
     uShades: { value: 0 },
     uTooth: { value: 0 },
     uGlint: { value: 0 },
