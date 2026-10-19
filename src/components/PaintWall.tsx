@@ -22,7 +22,7 @@ const HOLD = 2.5;
 /** Spray nozzle radius in CSS pixels */
 const NOZZLE = 22;
 /** Distance between spray puffs along a stroke */
-const STEP = 5;
+const STEP = 4;
 
 type Puff = { x: number; y: number; color: number; variant: number; born: number };
 type Drip = { x: number; y: number; len: number; max: number; w: number; color: number; born: number };
@@ -33,6 +33,7 @@ const VARIANTS = 3;
 /**
  * One spray puff, drawn once and stamped many times along a stroke. Like a real can:
  * a dense, solid core, a soft feathered edge, and fine overspray mist scattered well past it.
+ * Aes asked for a more solid stroke (2026-10-19): the core is close to opaque and the mist is lighter.
  */
 function makeSprite(color: string, dpr: number) {
   const size = Math.ceil(NOZZLE * 2 * dpr);
@@ -42,16 +43,16 @@ function makeSprite(color: string, dpr: number) {
   const r = size / 2;
   const g = ctx.createRadialGradient(r, r, 0, r, r, r * 0.62);
   g.addColorStop(0, color);
-  g.addColorStop(0.45, color);
+  g.addColorStop(0.7, color);
   g.addColorStop(1, "transparent");
-  ctx.globalAlpha = 0.28;
+  ctx.globalAlpha = 0.7;
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(r, r, r * 0.62, 0, Math.PI * 2);
   ctx.fill();
   // Overspray: lots of tiny droplets, thicker near the core, a few flying wide
   ctx.fillStyle = color;
-  for (let i = 0; i < 140; i++) {
+  for (let i = 0; i < 70; i++) {
     const a = Math.random() * Math.PI * 2;
     const d = Math.abs(Math.random() + Math.random() + Math.random() - 1.5) / 1.5 * r * 0.98;
     ctx.globalAlpha = 0.25 + Math.random() * 0.55;
@@ -107,9 +108,9 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
       }
       puffs.push(puff(x, y, colorRef.current, now));
       if (puffs.length > 4000) puffs.splice(0, puffs.length - 4000);
-      // Holding the can in one spot builds up paint until it runs
-      if (still > 8 || Math.random() < 0.012) {
-        drips.push({ x: x + (Math.random() - 0.5) * NOZZLE, y: y + NOZZLE * 0.3, len: 0, max: 30 + Math.random() * 90, w: 2 + Math.random() * 3, color: colorRef.current, born: now });
+      // Holding the can in one spot builds up paint until it runs. Aes asked for a little more dripping (2026-10-19).
+      if (still > 6 || Math.random() < 0.018) {
+        drips.push({ x: x + (Math.random() - 0.5) * NOZZLE, y: y + NOZZLE * 0.3, len: 0, max: 40 + Math.random() * 110, w: 2.5 + Math.random() * 3.5, color: colorRef.current, born: now });
         still = 0;
       }
       last = { x, y };

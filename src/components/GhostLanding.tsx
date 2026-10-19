@@ -8,7 +8,6 @@ import PaintWall from "./PaintWall";
 import SpeechBubble from "./SpeechBubble";
 import {
   CLICKS_PER_CYCLE,
-  CLONE_OPTION,
   TALK_LEAD,
   TRICK_DURATION,
   TRICK_ORDER,
@@ -25,48 +24,18 @@ const GhostStage = dynamic(() => import("./ghost/GhostStage"), { ssr: false });
 
 const clamp = (v: number) => Math.max(-1, Math.min(1, v));
 
-// Spray-paint specks on the white wall, as in Aes's prototype: [left %, top %, size px, opacity]
-const SPECKS: [number, number, number, number][] = [
-  [12, 22, 3, 0.8],
-  [21, 64, 2, 0.6],
-  [8, 81, 4, 0.5],
-  [31, 38, 2, 0.4],
-  [67, 18, 2, 0.7],
-  [78, 47, 3, 0.8],
-  [88, 72, 2, 0.5],
-  [72, 86, 4, 0.6],
-  [93, 31, 2, 0.4],
-  [40, 90, 2, 0.5],
-  [58, 9, 3, 0.35],
-  [4, 46, 2, 0.6],
-];
-
 /** Two taps on the empty wall within this many ms opens paint mode */
 const DOUBLE_TAP_MS = 450;
 
-/** Captions for tricks whose names don't read well on their own */
+/**
+ * What screen readers hear for tricks whose names don't read well on their own.
+ * Aes asked for no expression names on the page (2026-10-19), so these are never shown.
+ */
 const TRICK_CAPTION: Partial<Record<TrickName, string>> = {
   fire: "too hot",
   attitude: "grin",
-  tornado: "tornado",
   neon: "color play",
-  jumpscare: "boo!",
-  swarm: "clone",
-  tv: "tv off",
 };
-
-/**
- * The trick for click `n` (1 to 9). Adding ?clone=a or ?clone=b to the address picks which clone trick plays,
- * so Aes can compare option A (a twin) with option B (a swarm of tiny ghosts).
- */
-function trickFor(n: number): TrickName {
-  const trick = TRICK_ORDER[n - 1];
-  if (trick !== CLONE_OPTION) return trick;
-  const pick = new URLSearchParams(window.location.search).get("clone")?.toLowerCase();
-  if (pick === "a") return "clone";
-  if (pick === "b") return "swarm";
-  return trick;
-}
 
 /** After a tap on a phone, the ghost keeps looking there this long before drifting back to center */
 const TOUCH_LOOK_MS = 1600;
@@ -74,7 +43,7 @@ const TOUCH_LOOK_MS = 1600;
 /** The patience bar runs from toxic green through yellow to pink as the pokes add up */
 const PATIENCE_COLORS = ["#39ff14", "#39ff14", "#9dff00", "#d4ff00", "#ffe600", "#ffc400", "#ff9500", "#ff5e3a", "#ff2d7a", "#ff00ff"];
 
-/** What the caption under the ghost says for each idle mood */
+/** What screen readers hear for each idle mood */
 const MOOD_LABEL: Record<Mood, string | null> = {
   awake: null,
   bored: "bored…",
@@ -224,7 +193,7 @@ export default function GhostLanding() {
     if (event.type !== "welcome-back" || talking || painting || mood === "asleep") return;
     wake();
     say("missed me?");
-    play("boo");
+    play("curious");
   });
 
   const poke = useCallback(() => {
@@ -259,7 +228,7 @@ export default function GhostLanding() {
       });
       track("ghost_tenth_click");
     } else {
-      const trick = trickFor(next);
+      const trick = TRICK_ORDER[next - 1];
       say(TRICK_CAPTION[trick] ?? trick);
       play(trick);
       track("ghost_trick", { name: trick });
@@ -305,7 +274,10 @@ export default function GhostLanding() {
     [entered, painting, startPainting, talking],
   );
 
-  const caption = label ?? MOOD_LABEL[mood] ?? (talking ? "" : "Poke him");
+  // Read out to screen readers only: Aes wants no expression names under the ghost
+  const caption = label ?? MOOD_LABEL[mood] ?? "";
+  // The one line on show: a nudge until the first poke of each round
+  const hint = clicks === 0 && !talking && mood === "awake" ? "Poke him" : "";
   // Full when you arrive, empty on the tenth poke
   const patience = 1 - clicks / CLICKS_PER_CYCLE;
 
@@ -323,16 +295,6 @@ export default function GhostLanding() {
 
       {/* The still ghost shows at once; the 3D one fades in over it when it is ready */}
       <GhostPoster visible={!ready} scale={entered ? 0.92 : 1} y={entered ? -0.3 : 0} priority />
-
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        {SPECKS.map(([left, top, size, opacity], i) => (
-          <span
-            key={i}
-            className="absolute rounded-full bg-foreground"
-            style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, opacity }}
-          />
-        ))}
-      </div>
 
       <GhostStage
         controls={controls}
@@ -431,8 +393,11 @@ export default function GhostLanding() {
               transition={{ duration: 0.5, delay: 0.4 }}
               className={`flex flex-col items-center gap-2.5 transition-opacity ${painting ? "opacity-0" : ""}`}
             >
-              <p aria-live="polite" className="h-4 font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60">
+              <p aria-live="polite" className="sr-only">
                 {painting ? "" : caption}
+              </p>
+              <p aria-hidden className="h-4 font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60">
+                {painting ? "" : hint}
               </p>
               {/* His patience, with no words: it runs down with every poke and he snaps when it's empty */}
               <motion.div

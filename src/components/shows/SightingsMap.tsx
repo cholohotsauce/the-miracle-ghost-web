@@ -27,6 +27,15 @@ function project([lat, lng]: [number, number]) {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+/**
+ * Aes's own ghost drawing as the pin (2026-10-19), from his "Original Ghost" file, in two layers:
+ * a body mask that takes the pin's color, and his black linework on top.
+ * The pin's point (0, 0) sits just under the hem, on the city.
+ */
+const PIN = { x: -10.5, y: -21, width: 21, height: 25 };
+const PIN_BODY = "/sightings/ghost-pin-body.png";
+const PIN_INK = "/sightings/ghost-pin-ink.png";
+
 export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const reducedMotion = useReducedMotion() ?? false;
   const [open, setOpen] = useState<number | null>(null);
@@ -47,7 +56,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const vx = active ? clamp(active.x - vw / 2, 0, W - vw) : 0;
   const vy = active ? clamp(active.y - vh / 2, 0, H - vh) : 0;
   // Pins keep their size on screen while the map zooms
-  const pinScale = (active ? 1 / ZOOM : 1) * 1.6;
+  const pinScale = (active ? 1 / ZOOM : 1) * 2;
 
   return (
     <div className="relative">
@@ -62,6 +71,11 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         style={{ aspectRatio: `${W} / ${H}` }}
         onClick={(e) => e.target === e.currentTarget && setOpen(null)}
       >
+        <defs>
+          <mask id="ghost-pin" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" {...PIN}>
+            <image href={PIN_BODY} {...PIN} preserveAspectRatio="none" />
+          </mask>
+        </defs>
         <rect width={W} height={H} className="fill-background" onClick={() => setOpen(null)} />
         <path
           d={WORLD_LAND}
@@ -79,20 +93,19 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             aria-label={`${s.name}, ${s.city}`}
             onClick={() => setOpen(open === i ? null : i)}
             onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen(open === i ? null : i))}
-            className="cursor-pointer outline-none [&:focus-visible>path]:stroke-[var(--color-neon-pink)]"
+            className="cursor-pointer outline-none [&:focus-visible>rect]:fill-[var(--color-neon-pink)]"
             initial={false}
             animate={{ x, y, scale: pinScale }}
             transition={{ duration: reducedMotion ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
             style={{ transformBox: "view-box", originX: 0, originY: 0 }}
           >
-            {/* A little ghost pin */}
-            <path
-              d="M0,-20 C-8,-20 -10,-13 -10,-7 L-10,4 L-7,1 L-4,4 L-1,1 L2,4 L5,1 L8,4 L10,1 L10,-7 C10,-13 8,-20 0,-20Z"
-              className={`stroke-foreground transition-colors ${open === i ? "fill-[var(--color-neon-green)]" : s.status === "buffed" ? "fill-background" : "fill-foreground"}`}
-              strokeWidth="2"
+            {/* Aes's ghost: white, neon green when open, faded when the piece has been buffed */}
+            <rect
+              {...PIN}
+              mask="url(#ghost-pin)"
+              className={`transition-colors ${open === i ? "fill-[var(--color-neon-green)]" : "fill-background"}`}
             />
-            <circle cx="-3.5" cy="-10" r="1.6" className={open === i || s.status === "buffed" ? "fill-foreground" : "fill-background"} />
-            <circle cx="3.5" cy="-10" r="1.6" className={open === i || s.status === "buffed" ? "fill-foreground" : "fill-background"} />
+            <image href={PIN_INK} {...PIN} preserveAspectRatio="none" opacity={s.status === "buffed" && open !== i ? 0.45 : 1} />
             {/* The city, revealed over the selected ghost */}
             {open === i && (
               <g transform="translate(0 -27)" pointerEvents="none">

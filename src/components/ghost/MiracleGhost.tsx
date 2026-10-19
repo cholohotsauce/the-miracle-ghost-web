@@ -5,15 +5,23 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { FIRE_PLANE, GhostRig, HALO_SIZE } from "./ghostRig";
-import { SWARM_COUNT } from "./tricks";
+import { MINI_COUNT } from "./tricks";
 import { FACE_MAP_URL, HALO_MAP_URL, MODEL_URL } from "./modelBake";
 import type { GhostControls } from "./types";
+
+/** The low-poly ghost for the clone trick's hundred tiny ghosts (scripts/bake-mini-ghost.mjs) */
+const MINI_MODEL_URL = "/models/miracle-ghost-mini.glb";
 
 /**
  * The compressed file stores positions as integers with a scale on the node.
  * The shader reads model-space positions, so expand every attribute to floats and apply that scale.
  */
-function toModelSpace(mesh: THREE.Mesh) {
+function toModelSpace(scene: THREE.Object3D, url: string) {
+  let mesh: THREE.Mesh | undefined;
+  scene.traverse((o) => {
+    if (!mesh && (o as THREE.Mesh).isMesh) mesh = o as THREE.Mesh;
+  });
+  if (!mesh) throw new Error(`${url} has no mesh`);
   const geometry = new THREE.BufferGeometry();
   for (const [name, attr] of Object.entries(mesh.geometry.attributes)) {
     const a = attr as THREE.BufferAttribute;
@@ -41,27 +49,23 @@ export default function MiracleGhost({
   onReady?: () => void;
 }) {
   const gltf = useGLTF(MODEL_URL, false, true);
+  const miniGltf = useGLTF(MINI_MODEL_URL, false, true);
   // Both maps are data, not color, so keep them out of sRGB decoding
   const [faceMap, haloMap] = useTexture([FACE_MAP_URL, HALO_MAP_URL], (textures) => {
     for (const t of [textures].flat()) t.colorSpace = THREE.NoColorSpace;
   });
 
-  const geometry = useMemo(() => {
-    let mesh: THREE.Mesh | undefined;
-    gltf.scene.traverse((o) => {
-      if (!mesh && (o as THREE.Mesh).isMesh) mesh = o as THREE.Mesh;
-    });
-    if (!mesh) throw new Error(`${MODEL_URL} has no mesh`);
-    return toModelSpace(mesh);
-  }, [gltf]);
+  const geometry = useMemo(() => toModelSpace(gltf.scene, MODEL_URL), [gltf]);
+  const miniGeometry = useMemo(() => toModelSpace(miniGltf.scene, MINI_MODEL_URL), [miniGltf]);
 
   const [rig] = useState(() => new GhostRig(controls.current, faceMap, haloMap));
   const trickGroup = useRef<THREE.Group>(null);
-  const cloneGroup = useRef<THREE.Group>(null);
-  const swarmGroup = useRef<THREE.Group>(null);
+  const minis = useRef<THREE.InstancedMesh>(null);
   const frames = useRef(0);
+  const view = useRef({ halfW: 2, halfH: 2.9, centerY: 0 });
 
   useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => () => miniGeometry.dispose(), [miniGeometry]);
   useEffect(
     () => () => {
       rig.dispose();
@@ -72,7 +76,11 @@ export default function MiracleGhost({
 
   useFrame((state, dt) => {
     const { current: c } = controls;
-    rig.update(c, state.clock.elapsedTime, dt, trickGroup.current, cloneGroup.current, swarmGroup.current);
+    const { width, height } = state.viewport.getCurrentViewport(state.camera, [0, 0, 0]);
+    view.current.halfW = width / 2;
+    view.current.halfH = height / 2;
+    view.current.centerY = state.camera.position.y;
+    rig.update(c, state.clock.elapsedTime, dt, trickGroup.current, minis.current, view.current);
     // Two frames in, the ghost is on screen and the shaders are compiled
     if (++frames.current === 2) onReady?.();
   });
@@ -101,17 +109,17 @@ export default function MiracleGhost({
           onPointerOver={() => (document.body.style.cursor = "pointer")}
           onPointerOut={() => (document.body.style.cursor = "")}
         />
-        <group ref={cloneGroup} visible={false}>
-          <mesh geometry={geometry} material={rig.cloneBody.material} onClick={handleClick} />
-        </group>
       </group>
-      <group ref={swarmGroup} visible={false}>
-        {Array.from({ length: SWARM_COUNT }, (_, i) => (
-          <mesh key={i} geometry={geometry} material={rig.body.material} onClick={handleClick} />
-        ))}
-      </group>
+      <instancedMesh
+        ref={minis}
+        args={[miniGeometry, rig.body.material, MINI_COUNT]}
+        visible={false}
+        frustumCulled={false}
+        onClick={handleClick}
+      />
     </>
   );
 }
 
 useGLTF.preload(MODEL_URL, false, true);
+useGLTF.preload(MINI_MODEL_URL, false, true);
