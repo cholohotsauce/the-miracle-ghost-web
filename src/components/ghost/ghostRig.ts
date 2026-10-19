@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { createFireMaterial, createGhostMaterial, createHaloMaterial, hexToVec3 } from "./ghostMaterial";
+import { FACES, IDLE_FACE, type FaceName } from "./faces";
+import { createFireMaterial, createGhostMaterial, createHaloMaterial, faceUniform, hexToVec3 } from "./ghostMaterial";
 import { HALO_RECT } from "./modelBake";
 import {
   blendPose,
@@ -7,6 +8,7 @@ import {
   poseAt,
   REST,
   TRICK_DURATION,
+  TRICK_FACE,
   TRICK_NEXT,
   type Pose,
   type TrickName,
@@ -58,6 +60,8 @@ const MINIS = Array.from({ length: MINI_COUNT }, (_, i) => {
 
 /** How long a new trick takes to blend in from wherever the last one left off */
 const BLEND_IN = 0.18;
+/** Seconds for one face to fade into the next */
+const FACE_FADE = 0.16;
 
 /** Owns the ghost's materials and plays its tricks each frame. The loaded textures belong to the GLTF cache. */
 export class GhostRig {
@@ -73,9 +77,22 @@ export class GhostRig {
   private blink = { next: 2.5, t: -1 };
   private glowColor = new THREE.Vector3();
   private dummy = new THREE.Object3D();
+  /** The face in slot A, the one fading in over it in slot B, and how far that fade has got */
+  private face: { a: FaceName; b: FaceName; mix: number } = { a: IDLE_FACE, b: IDLE_FACE, mix: 0 };
+  private faceMaps: Record<FaceName, THREE.Texture>;
+  private faceUniforms = Object.fromEntries(
+    Object.entries(FACES).map(([name, face]) => [name, faceUniform(face)]),
+  ) as Record<FaceName, ReturnType<typeof faceUniform>>;
 
-  constructor(initial: GhostState, faceMap: THREE.Texture, haloMap: THREE.Texture) {
-    this.body = createGhostMaterial(faceMap);
+  constructor(
+    initial: GhostState,
+    faceMaps: Record<FaceName, THREE.Texture>,
+    haloMap: THREE.Texture,
+    finish: { silver: boolean } = { silver: false },
+  ) {
+    this.faceMaps = faceMaps;
+    this.body = createGhostMaterial(faceMaps[IDLE_FACE]);
+    this.body.uniforms.uSilver.value = finish.silver ? 1 : 0;
     this.halo = createHaloMaterial(haloMap);
     this.fire = createFireMaterial(
       haloMap,
@@ -116,8 +133,10 @@ export class GhostRig {
     }
     const u = t - this.trick.start;
     const name = this.trick.name;
-    if (name && u < TRICK_DURATION[name]) poseAt(name, u, c.reducedMotion, this.target);
+    const playing = name && u < TRICK_DURATION[name] ? name : null;
+    if (playing) poseAt(playing, u, c.reducedMotion, this.target);
     else Object.assign(this.target, REST);
+    this.fadeFace(playing ? TRICK_FACE[playing] : IDLE_FACE, step);
     const k = THREE.MathUtils.smoothstep(u / BLEND_IN, 0, 1);
     const p = blendPose(this.from, this.target, k, this.pose);
 
@@ -215,6 +234,34 @@ export class GhostRig {
         minis.instanceMatrix.needsUpdate = true;
       }
     }
+  }
+
+  /** Fades toward the face `want`, through the two face slots */
+  private fadeFace(want: FaceName, step: number) {
+    const f = this.face;
+    const rate = step / FACE_FADE;
+    if (want === f.a) f.mix = Math.max(0, f.mix - rate);
+    else {
+      if (want !== f.b) {
+        // A third face: whichever of the two shows more becomes the one it fades from
+        if (f.mix > 0.5) {
+          f.a = f.b;
+          f.mix = 1 - f.mix;
+        }
+        f.b = want;
+      }
+      f.mix = Math.min(1, f.mix + rate);
+    }
+    if (f.mix >= 1) {
+      f.a = f.b;
+      f.mix = 0;
+    }
+    const uni = this.body.uniforms;
+    uni.uFaceMapA.value = this.faceMaps[f.a];
+    uni.uFaceA.value = this.faceUniforms[f.a];
+    uni.uFaceMapB.value = this.faceMaps[f.b];
+    uni.uFaceB.value = this.faceUniforms[f.b];
+    uni.uFaceMix.value = f.mix;
   }
 
   dispose() {

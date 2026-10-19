@@ -6,8 +6,20 @@ import { useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { FIRE_PLANE, GhostRig, HALO_SIZE } from "./ghostRig";
 import { MINI_COUNT } from "./tricks";
-import { FACE_MAP_URL, HALO_MAP_URL, MODEL_URL } from "./modelBake";
+import { FACE_NAMES, FACES, type FaceName } from "./faces";
+import { HALO_MAP_URL, MODEL_URL } from "./modelBake";
 import type { GhostControls } from "./types";
+
+/**
+ * The finish Aes is trying out (2026-10-19). Clay unless the page is opened with ?finish=silver;
+ * once he picks, set the default here.
+ */
+const DEFAULT_FINISH: "clay" | "silver" = "clay";
+
+function silverFinish() {
+  const asked = new URLSearchParams(window.location.search).get("finish");
+  return (asked === "silver" || asked === "clay" ? asked : DEFAULT_FINISH) === "silver";
+}
 
 /** The low-poly ghost for the clone trick's hundred tiny ghosts (scripts/bake-mini-ghost.mjs) */
 const MINI_MODEL_URL = "/models/miracle-ghost-mini.glb";
@@ -50,15 +62,17 @@ export default function MiracleGhost({
 }) {
   const gltf = useGLTF(MODEL_URL, false, true);
   const miniGltf = useGLTF(MINI_MODEL_URL, false, true);
-  // Both maps are data, not color, so keep them out of sRGB decoding
-  const [faceMap, haloMap] = useTexture([FACE_MAP_URL, HALO_MAP_URL], (textures) => {
+  // The maps are data, not color, so keep them out of sRGB decoding
+  const maps = useTexture([...FACE_NAMES.map((name) => FACES[name].map), HALO_MAP_URL], (textures) => {
     for (const t of [textures].flat()) t.colorSpace = THREE.NoColorSpace;
   });
+  const haloMap = maps[FACE_NAMES.length];
+  const faceMaps = Object.fromEntries(FACE_NAMES.map((name, i) => [name, maps[i]])) as Record<FaceName, THREE.Texture>;
 
   const geometry = useMemo(() => toModelSpace(gltf.scene, MODEL_URL), [gltf]);
   const miniGeometry = useMemo(() => toModelSpace(miniGltf.scene, MINI_MODEL_URL), [miniGltf]);
 
-  const [rig] = useState(() => new GhostRig(controls.current, faceMap, haloMap));
+  const [rig] = useState(() => new GhostRig(controls.current, faceMaps, haloMap, { silver: silverFinish() }));
   const trickGroup = useRef<THREE.Group>(null);
   const minis = useRef<THREE.InstancedMesh>(null);
   const frames = useRef(0);

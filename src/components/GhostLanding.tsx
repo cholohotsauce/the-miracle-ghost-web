@@ -40,8 +40,6 @@ const TRICK_CAPTION: Partial<Record<TrickName, string>> = {
 /** After a tap on a phone, the ghost keeps looking there this long before drifting back to center */
 const TOUCH_LOOK_MS = 1600;
 
-/** The patience bar runs from toxic green through yellow to pink as the pokes add up */
-const PATIENCE_COLORS = ["#39ff14", "#39ff14", "#9dff00", "#d4ff00", "#ffe600", "#ffc400", "#ff9500", "#ff5e3a", "#ff2d7a", "#ff00ff"];
 
 /** What screen readers hear for each idle mood */
 const MOOD_LABEL: Record<Mood, string | null> = {
@@ -178,8 +176,9 @@ export default function GhostLanding() {
     onMood: useCallback(
       (m: Mood) => {
         if (m === "awake") {
-          // Moving the mouse snaps him out of a bored spell
-          if (controls.current.trick.name === "bored" || controls.current.trick.name === "yawn") play(null);
+          // Moving the mouse snaps him out of a bored spell, and anything that wakes him ends the nap
+          const name = controls.current.trick.name;
+          if (name === "bored" || name === "yawn" || name === "sleep") play(null);
           return;
         }
         say(null);
@@ -278,8 +277,8 @@ export default function GhostLanding() {
   const caption = label ?? MOOD_LABEL[mood] ?? "";
   // The one line on show: a nudge until the first poke of each round
   const hint = clicks === 0 && !talking && mood === "awake" ? "Poke him" : "";
-  // Full when you arrive, empty on the tenth poke
-  const patience = 1 - clicks / CLICKS_PER_CYCLE;
+  // His impatience: empty when you arrive, filled all the way in red on the tenth poke (Aes, 2026-10-19)
+  const impatience = clicks / CLICKS_PER_CYCLE;
 
   return (
     <section
@@ -399,7 +398,7 @@ export default function GhostLanding() {
               <p aria-hidden className="h-4 font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60">
                 {painting ? "" : hint}
               </p>
-              {/* His patience, with no words: it runs down with every poke and he snaps when it's empty */}
+              {/* His patience, with no words: red fills the line with every poke and he snaps when it's full */}
               <motion.div
                 role="meter"
                 aria-label="The ghost's patience"
@@ -413,9 +412,9 @@ export default function GhostLanding() {
               >
                 <motion.div
                   initial={false}
-                  animate={{ scaleX: patience, backgroundColor: PATIENCE_COLORS[Math.min(clicks, PATIENCE_COLORS.length - 1)] }}
+                  animate={{ scaleX: impatience }}
                   transition={{ type: "spring", stiffness: 260, damping: 24 }}
-                  className="h-full w-full origin-left rounded-full"
+                  className="h-full w-full origin-left rounded-full bg-[var(--color-drip-red)]"
                 />
               </motion.div>
             </motion.div>

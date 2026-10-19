@@ -1,8 +1,10 @@
 /**
  * The ghost's tricks, all done in code because Aes's model has no animation clips.
  * Each trick is a pose over time, layered on top of the idle float and the cursor follow.
- * To add a trick: add a name, a caption, a duration, and a case in `poseAt`, then list it in TRICK_ORDER.
+ * To add a trick: add a name, a caption, a duration, a face, and a case in `poseAt`, then list it in TRICK_ORDER.
  */
+
+import type { FaceName } from "./faces";
 
 export type TrickName =
   | "grin"
@@ -118,6 +120,34 @@ export const TRICK_DURATION: Record<TrickName, number> = {
   sleep: Infinity,
   waking: 2.2,
   grumpy: 1.9,
+};
+
+/**
+ * The face he wears for each trick. Between tricks he goes back to IDLE_FACE (faces.ts).
+ * Aes's 2026-10-19 rule until his face-to-trick list arrives: the original face when idle, Grim for the poke tricks.
+ */
+export const TRICK_FACE: Record<TrickName, FaceName> = {
+  grin: "grim",
+  spin: "grim",
+  squash: "grim",
+  "annoyed shake": "grim",
+  "grin pop": "grim",
+  backflip: "grim",
+  boing: "grim",
+  neon: "grim",
+  fire: "grim",
+  attitude: "grim",
+  tornado: "grim",
+  clone: "grim",
+  curious: "grim",
+  zapped: "grim",
+  // The tenth click: he snaps, then talks with his usual smile
+  talk: "original",
+  bored: "original",
+  yawn: "original",
+  sleep: "original",
+  waking: "original",
+  grumpy: "original",
 };
 
 /** Tricks that roll straight into another when they finish */

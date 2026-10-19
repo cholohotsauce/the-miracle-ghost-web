@@ -28,24 +28,29 @@ function project([lat, lng]: [number, number]) {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /**
- * Aes's own ghost drawing as the pin (2026-10-19), from his "Original Ghost" file, in two layers:
- * a body mask that takes the pin's color, and his black linework on top.
- * The pin's point (0, 0) sits just under the hem, on the city.
+ * Aes's own ghost drawing as the pin, from his "Original Ghost Dropless" file (2026-10-19), in two layers:
+ * a body mask that takes the pin's color, and his black linework on top (scripts/make-icons.mjs).
+ * The pin's point (0, 0) sits at the tip of the hem, on the city. Aes asked for it about 20% bigger.
  */
-const PIN = { x: -10.5, y: -21, width: 21, height: 25 };
+const PIN = { x: -12.6, y: -28, width: 25.2, height: 28.9 };
+/** Pieces in the same city fan out this far from its center, in pin widths, so each one stays tappable */
+const FAN = 0.55;
 const PIN_BODY = "/sightings/ghost-pin-body.png";
 const PIN_INK = "/sightings/ghost-pin-ink.png";
 
 export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const reducedMotion = useReducedMotion() ?? false;
   const [open, setOpen] = useState<number | null>(null);
-  // Several pieces in one city fan out around its center
+  // Pins keep their size on screen while the map zooms
+  const pinScale = (open !== null ? 1 / ZOOM : 1) * 2;
+  // Several pieces in one city fan out around its center, side by side first, spaced by the pins' size on screen
+  const fan = PIN.width * FAN * pinScale;
   const placed = sightings.map((s, i) => {
     const same = sightings.filter((o) => o.city === s.city);
     const k = same.indexOf(s);
     const [x, y] = project(s.at);
-    const a = (k / Math.max(same.length, 1)) * Math.PI * 2 - Math.PI / 2;
-    const r = same.length > 1 ? 9 : 0;
+    const a = Math.PI + (k / Math.max(same.length, 1)) * Math.PI * 2;
+    const r = same.length > 1 ? fan : 0;
     return { s, i, x: x + Math.cos(a) * r, y: y + Math.sin(a) * r };
   });
   const active = open === null ? null : placed[open];
@@ -55,8 +60,6 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const vh = active ? H / ZOOM : H;
   const vx = active ? clamp(active.x - vw / 2, 0, W - vw) : 0;
   const vy = active ? clamp(active.y - vh / 2, 0, H - vh) : 0;
-  // Pins keep their size on screen while the map zooms
-  const pinScale = (active ? 1 / ZOOM : 1) * 2;
 
   return (
     <div className="relative">
@@ -108,7 +111,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             <image href={PIN_INK} {...PIN} preserveAspectRatio="none" opacity={s.status === "buffed" && open !== i ? 0.45 : 1} />
             {/* The city, revealed over the selected ghost */}
             {open === i && (
-              <g transform="translate(0 -27)" pointerEvents="none">
+              <g transform={`translate(0 ${PIN.y - 7})`} pointerEvents="none">
                 <rect
                   x={-(active!.s.city.length * 3.1 + 7)}
                   y={-8}
@@ -140,6 +143,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             <div>
               <p className="font-drip text-2xl uppercase leading-none">{active.s.name}</p>
               <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-foreground/70">
+                {active.s.kind ? `${active.s.kind} · ` : ""}
                 {active.s.city}
                 {active.s.year ? ` · ${active.s.year}` : ""}
                 {active.s.status ? ` · ${active.s.status === "running" ? "still running" : "buffed"}` : ""}

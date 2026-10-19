@@ -63,14 +63,17 @@ export function useIdleMood({ paused, onMood }: { paused: boolean; onMood: (mood
     return () => window.clearInterval(id);
   }, [paused, change]);
 
-  /** Wakes him (or just resets the clock). Returns the mood he was in. */
+  /**
+   * Wakes him (or just resets the clock). Returns the mood he was in.
+   * Tells `onMood` too, so a sleeping or bored face never outlives the mood (it used to stay stuck
+   * after paint mode, which wakes him without a poke).
+   */
   const wake = useCallback(() => {
     const was = moodRef.current;
     last.current = performance.now();
-    moodRef.current = "awake";
-    setMood("awake");
+    change("awake");
     return was;
-  }, []);
+  }, [change]);
 
   return { mood, wake };
 }

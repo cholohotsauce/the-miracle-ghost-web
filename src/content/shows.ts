@@ -1,5 +1,6 @@
 /**
- * Shows and "ghost sightings" (murals and street pieces) for the Shows page.
+ * Shows and "ghost sightings" for the Shows page. A sighting is anywhere the ghost turns up:
+ * murals, graffiti, stickers, paste-ups, anywhere in the world (Aes, 2026-10-19).
  * Replace the samples with Aes's real list. Entries marked `sample: true` show a SAMPLE tag.
  *
  * Sightings are pinned by city on purpose, never at an exact address:
@@ -37,8 +38,12 @@ export const shows: Show[] = [
   },
 ];
 
+/** What kind of sighting it is, shown on its card */
+export type SightingKind = "mural" | "graffiti" | "sticker" | "paste-up" | "other";
+
 export type Sighting = {
   name: string;
+  kind?: SightingKind;
   /** Shown on the card, e.g. "Miami, FL" */
   city: string;
   /** The city's center as [latitude, longitude], never the wall's spot */
@@ -52,10 +57,11 @@ export type Sighting = {
 };
 
 export const sightings: Sighting[] = [
-  { name: "Sample: Teal drip ghost", city: "Miami, FL", at: [25.78, -80.21], year: 2024, status: "running", sample: true },
-  { name: "Sample: Three-eyed ghost", city: "Miami, FL", at: [25.78, -80.21], year: 2023, status: "buffed", sample: true },
-  { name: "Sample: Ghost rider", city: "New York, NY", at: [40.71, -74.0], year: 2025, status: "running", sample: true },
-  { name: "Sample: Desert ghost", city: "Los Angeles, CA", at: [34.05, -118.24], year: 2023, status: "running", sample: true },
-  { name: "Sample: Ghost in the plaza", city: "Mexico City", at: [19.43, -99.13], year: 2024, status: "buffed", sample: true },
-  { name: "Sample: Ghost on tour", city: "Madrid", at: [40.42, -3.7], year: 2025, status: "running", sample: true },
+  { name: "Sample: Teal drip ghost", kind: "mural", city: "Miami, FL", at: [25.78, -80.21], year: 2024, status: "running", sample: true },
+  { name: "Sample: Three-eyed ghost", kind: "graffiti", city: "Miami, FL", at: [25.78, -80.21], year: 2023, status: "buffed", sample: true },
+  { name: "Sample: Ghost rider", kind: "graffiti", city: "New York, NY", at: [40.71, -74.0], year: 2025, status: "running", sample: true },
+  { name: "Sample: Desert ghost", kind: "mural", city: "Los Angeles, CA", at: [34.05, -118.24], year: 2023, status: "running", sample: true },
+  { name: "Sample: Ghost in the plaza", kind: "paste-up", city: "Mexico City", at: [19.43, -99.13], year: 2024, status: "buffed", sample: true },
+  { name: "Sample: Ghost on tour", kind: "sticker", city: "Madrid", at: [40.42, -3.7], year: 2025, status: "running", sample: true },
+  { name: "Sample: Sticker drop", kind: "sticker", city: "Tokyo", at: [35.68, 139.69], year: 2025, sample: true },
 ];
