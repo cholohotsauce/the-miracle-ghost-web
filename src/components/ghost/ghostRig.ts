@@ -49,7 +49,7 @@ const MINIS = Array.from({ length: MINI_COUNT }, (_, i) => {
   };
   return {
     home: { x: 1.0 * r * Math.cos(a), y: 0.05 + 1.3 * r * Math.sin(a) },
-    out: { r: 0.3 + 0.7 * Math.sqrt(rand(1)), a: a + (rand(2) - 0.5) * 0.4 },
+    out: { r: 0.12 + 0.88 * Math.sqrt(rand(1)), a: a + (rand(2) - 0.5) * 0.4 },
     delay: rand(3) * MINI_STAGGER,
     size: 0.85 + 0.3 * rand(4),
     phase: rand(5) * Math.PI * 2,
@@ -195,7 +195,8 @@ export class GhostRig {
         const s = 1 + (ENTERED.scale - 1) * this.enter;
         const homeY = ENTERED.y * this.enter;
         const rx = Math.min(view.halfW * 0.85, 6);
-        const ry = view.halfH * 0.78;
+        // Clear of the menu at the top and the patience bar at the bottom
+        const ry = view.halfH * 0.66;
         const d = this.dummy;
         MINIS.forEach((m, i) => {
           const k = THREE.MathUtils.clamp(p.split * (1 + MINI_STAGGER) - m.delay, 0, 1);

@@ -320,8 +320,8 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       // Curious (replaced the jumpscare, 2026-10-19): he floats up to the screen, tilts his head one way and then
       // the other as if studying you, then drifts back to his place
       const near = Math.min(easeInOutCubic(u / 0.9), easeInOutCubic((d - u) / 0.9));
-      out.z = 3 * near;
-      out.y = -0.35 * near;
+      out.z = 2.2 * near;
+      out.y = -0.15 * near;
       out.rx = -0.06 * near;
       const tiltA = envelope(u - 0.75, 0.35, 0.35, 1.05);
       const tiltB = envelope(u - 1.65, 0.35, 0.4, 1.05);
