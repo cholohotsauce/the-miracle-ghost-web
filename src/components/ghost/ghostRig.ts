@@ -3,10 +3,9 @@ import { createFireMaterial, createGhostMaterial, createHaloMaterial, hexToVec3 
 import { HALO_RECT } from "./modelBake";
 import {
   blendPose,
-  CLONE_GAP,
+  MINI_COUNT,
   poseAt,
   REST,
-  SWARM_COUNT,
   TRICK_DURATION,
   TRICK_NEXT,
   type Pose,
@@ -31,16 +30,31 @@ const NEON_STEP = 0.9;
 /** After entry the ghost drops a little and shrinks, making room for the menu */
 const ENTERED = { y: -0.3, scale: 0.92 };
 
+/** The tiny ghosts' size, as a fraction of his (the mini model is the same height as the full one) */
+const MINI_SIZE = 0.15;
+/** How late the last tiny ghost leaves and comes back, as a fraction of the flight */
+const MINI_STAGGER = 0.35;
+
 /**
- * Where each tiny ghost in the swarm hovers, spread evenly over an oval around him (a sunflower pattern),
- * in world units from his center
+ * Each tiny ghost of the clone trick. They spread evenly (a sunflower pattern) over an oval the size of his body,
+ * so together they make up his shape, and fly straight out from there to the same angle on an oval that fills the page.
  */
-const SWARM_SPOTS = Array.from({ length: SWARM_COUNT }, (_, i) => {
-  const r = Math.sqrt((i + 0.5) / SWARM_COUNT);
+const MINIS = Array.from({ length: MINI_COUNT }, (_, i) => {
+  const r = Math.sqrt((i + 0.5) / MINI_COUNT);
   const a = i * 2.39996;
-  return { x: 1.5 * r * Math.cos(a), y: 0.15 + 1.6 * r * Math.sin(a) };
+  // A fixed pseudo-random number per ghost, so every run looks the same
+  const rand = (k: number) => {
+    const v = Math.sin((i + 1) * 12.9898 + k * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  return {
+    home: { x: 1.0 * r * Math.cos(a), y: 0.05 + 1.3 * r * Math.sin(a) },
+    out: { r: 0.12 + 0.88 * Math.sqrt(rand(1)), a: a + (rand(2) - 0.5) * 0.4 },
+    delay: rand(3) * MINI_STAGGER,
+    size: 0.85 + 0.3 * rand(4),
+    phase: rand(5) * Math.PI * 2,
+  };
 });
-const SWARM_SIZE = 0.24;
 
 /** How long a new trick takes to blend in from wherever the last one left off */
 const BLEND_IN = 0.18;
@@ -50,8 +64,6 @@ export class GhostRig {
   readonly body: ReturnType<typeof createGhostMaterial>;
   readonly halo: ReturnType<typeof createHaloMaterial>;
   readonly fire: ReturnType<typeof createFireMaterial>;
-  /** The clone's own copy of the body material, so it can look the other way */
-  readonly cloneBody: ReturnType<typeof createGhostMaterial>;
 
   private trick: { name: TrickName | null; seq: number; start: number } = { name: null, seq: 0, start: 0 };
   private from: Pose = { ...REST };
@@ -60,11 +72,11 @@ export class GhostRig {
   private enter = 0;
   private blink = { next: 2.5, t: -1 };
   private glowColor = new THREE.Vector3();
+  private dummy = new THREE.Object3D();
 
   constructor(initial: GhostState, faceMap: THREE.Texture, haloMap: THREE.Texture) {
     this.body = createGhostMaterial(faceMap);
     this.halo = createHaloMaterial(haloMap);
-    this.cloneBody = createGhostMaterial(faceMap);
     this.fire = createFireMaterial(
       haloMap,
       new THREE.Vector4(HALO_RECT.minX, HALO_RECT.minY, HALO_SIZE.width, HALO_SIZE.height),
@@ -74,13 +86,17 @@ export class GhostRig {
     this.enter = initial.entered ? 1 : 0;
   }
 
+  /**
+   * `minis` is the clone trick's instanced tiny ghosts, and `view` is half the visible width and height
+   * at the ghost's depth, so they can spread over the whole page on any screen
+   */
   update(
     c: GhostState,
     t: number,
     dt: number,
     group: THREE.Object3D | null,
-    clone: THREE.Object3D | null = null,
-    swarm: THREE.Object3D | null = null,
+    minis: THREE.InstancedMesh | null = null,
+    view = { halfW: 2, halfH: 2.9, centerY: 0 },
   ) {
     const step = Math.min(dt, 1 / 20);
     const { body, halo } = this;
@@ -148,21 +164,16 @@ export class GhostRig {
     uni.uGrin.value = p.grin;
     uni.uFrown.value = p.frown;
     uni.uLid.value = p.lid;
+    uni.uMouthY.value = p.mouthY;
     uni.uBlink.value = Math.max(blinkScale * (1 - p.lid * 0.3), 0.08);
     uni.uGlow.value = p.glow;
     uni.uGlowColor.value.copy(this.glowColor);
-    uni.uShades.value = p.shades;
-    uni.uTooth.value = p.tooth;
-    uni.uGlint.value = p.glint;
     uni.uFire.value = p.fire;
     uni.uFireLevel.value = p.fireLevel;
     uni.uSoot.value = p.soot;
     uni.uWake.value = p.wake;
-    uni.uBrow.value = p.brow;
     uni.uDizzy.value = p.dizzy;
     uni.uShock.value = p.shock;
-    uni.uTv.value = p.tv;
-    uni.uCrt.value = p.crt;
     // The halo glows in the neon colors, or yellow while he is being zapped
     halo.uniforms.uColor.value.copy(p.shock > p.glow ? ZAP : this.glowColor);
     halo.uniforms.uStrength.value = Math.max(p.glow, p.shock) * 0.75;
@@ -175,41 +186,33 @@ export class GhostRig {
     fire.uZap.value = p.shock;
     this.fire.material.visible = p.fire > 0.001 || p.smoke > 0.001 || p.shock > 0.001;
 
-    // The clone rides inside the ghost's group: offset so the two end up mirrored either side of center,
-    // turned to face each other, with the same face except it looks the other way
-    if (clone) {
-      clone.visible = p.clone > 0.001;
-      if (clone.visible) {
-        const parentScale = group ? group.scale.x : 1;
-        clone.position.x = (2 * CLONE_GAP * p.clone) / Math.max(parentScale, 0.0001);
-        clone.rotation.y = -0.8 * p.cloneLook;
-        clone.scale.setScalar(Math.max(p.cloneScale, 0.0001));
-        const cu = this.cloneBody.uniforms as Record<string, { value: unknown }>;
-        for (const [key, u] of Object.entries(uni as Record<string, { value: unknown }>)) {
-          const v = u.value;
-          if (typeof v === "number" || v instanceof THREE.Texture) cu[key].value = v;
-          else (cu[key].value as THREE.Vector2 | THREE.Vector3 | THREE.Vector4).copy(v as never);
-        }
-        this.cloneBody.uniforms.uLook.value.x = look.x - 2 * p.lookX;
-        // Its body sways a beat out of step with the original
-        this.cloneBody.uniforms.uTime.value = t + 0.37;
-      }
-    }
-
-    // The swarm sits outside the ghost's group so it stays put while he shrinks away.
-    // Each tiny ghost flies out to its spot and bobs there; they all share his face.
-    if (swarm) {
-      swarm.visible = p.swarm > 0.02;
-      if (swarm.visible) {
-        swarm.position.set(0, ENTERED.y * this.enter, 0);
-        swarm.children.forEach((mini, i) => {
-          const spot = SWARM_SPOTS[i];
-          if (!spot) return;
-          const bob = c.reducedMotion ? 0 : 0.06 * Math.sin(t * 2.2 + i * 1.7);
-          mini.position.set(spot.x * p.swarm, spot.y * p.swarm + bob, 0.1 * Math.sin(i));
-          mini.rotation.z = c.reducedMotion ? 0 : 0.18 * Math.sin(t * 3 + i);
-          mini.scale.setScalar(SWARM_SIZE * Math.min(1, p.swarm * 3));
+    // The clone trick's tiny ghosts sit outside the ghost's group so they stay put while he shrinks away.
+    // Each one bursts out from its spot in his shape to its spot on the page, a little after or before the others,
+    // bobs and flutters there, then flies home. They all share his face.
+    if (minis) {
+      minis.visible = p.minis > 0.001;
+      if (minis.visible) {
+        const s = 1 + (ENTERED.scale - 1) * this.enter;
+        const homeY = ENTERED.y * this.enter;
+        const rx = Math.min(view.halfW * 0.85, 6);
+        // Clear of the menu at the top and the patience bar at the bottom
+        const ry = view.halfH * 0.66;
+        const d = this.dummy;
+        MINIS.forEach((m, i) => {
+          const k = THREE.MathUtils.clamp(p.split * (1 + MINI_STAGGER) - m.delay, 0, 1);
+          const fly = k * k * (3 - 2 * k) + 0.12 * Math.sin(Math.PI * k);
+          const still = c.reducedMotion ? 0 : 1;
+          const tx = rx * m.out.r * Math.cos(m.out.a) + 0.08 * Math.sin(t * 1.3 + m.phase) * still;
+          const ty = view.centerY + ry * m.out.r * Math.sin(m.out.a) + 0.07 * Math.sin(t * 2.2 + m.phase) * still;
+          const hx = m.home.x * s;
+          const hy = m.home.y * s + homeY;
+          d.position.set(hx + (tx - hx) * fly, hy + (ty - hy) * fly, 0.3 * Math.sin(m.phase) * fly);
+          d.rotation.set(0, 0.35 * Math.sin(t * 1.7 + m.phase) * fly * still, 0.2 * Math.sin(t * 3 + m.phase) * still);
+          d.scale.setScalar(Math.max(MINI_SIZE * s * m.size * p.minis, 0.0001));
+          d.updateMatrix();
+          minis.setMatrixAt(i, d.matrix);
         });
+        minis.instanceMatrix.needsUpdate = true;
       }
     }
   }
@@ -218,6 +221,5 @@ export class GhostRig {
     this.body.material.dispose();
     this.halo.material.dispose();
     this.fire.material.dispose();
-    this.cloneBody.material.dispose();
   }
 }
