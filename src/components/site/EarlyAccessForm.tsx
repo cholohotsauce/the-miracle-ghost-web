@@ -72,7 +72,7 @@ export default function EarlyAccessForm({
         htmlFor={id}
         className={
           banner
-            ? "mb-1 text-lg font-medium md:text-xl"
+            ? "text-base font-medium md:mb-1 md:text-xl"
             : compact
               ? "font-mono text-[11px] uppercase tracking-[0.2em]"
               : "font-mono text-xs uppercase tracking-[0.25em]"
@@ -91,7 +91,7 @@ export default function EarlyAccessForm({
           placeholder="you@email.com"
           className={`min-w-0 flex-1 rounded-full border-2 px-4 text-base outline-none focus:shadow-[0_0_0_3px_var(--color-neon-green)] ${
             banner ? "border-background bg-foreground text-background placeholder:text-background/60" : "border-foreground bg-background"
-          } ${compact ? "h-10" : "h-12"}`}
+          } ${compact || banner ? "h-10" : "h-12"} ${banner ? "md:h-12" : ""}`}
         />
         {/* Spam trap: hidden from people, filled in by bots */}
         <input name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-px w-px opacity-0" />
@@ -102,7 +102,7 @@ export default function EarlyAccessForm({
             banner
               ? "bg-[var(--color-neon-green)] font-black tracking-wide text-foreground hover:scale-105 md:px-6 md:text-lg"
               : "bg-foreground font-mono text-xs tracking-[0.2em] text-background hover:shadow-[4px_4px_0_var(--color-neon-green)]"
-          } ${compact ? "h-10" : "h-12"}`}
+          } ${compact || banner ? "h-10" : "h-12"} ${banner ? "md:h-12" : ""}`}
         >
           {status === "sending" ? "…" : cta}
         </button>

@@ -80,9 +80,10 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
           </mask>
         </defs>
         <rect width={W} height={H} className="fill-background" onClick={() => setOpen(null)} />
+        {/* Aes asked for all the land solid black on the white page (2026-10-19) */}
         <path
           d={WORLD_LAND}
-          className="fill-background stroke-foreground"
+          className="fill-foreground stroke-foreground"
           strokeWidth="1.2"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -118,9 +119,10 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
                   width={active!.s.city.length * 6.2 + 14}
                   height={14}
                   rx={7}
-                  className="fill-foreground"
+                  className="fill-background stroke-foreground"
+                  strokeWidth="1.2"
                 />
-                <text textAnchor="middle" y={2.5} className="fill-background font-mono uppercase" fontSize="8" letterSpacing="0.6">
+                <text textAnchor="middle" y={2.5} className="fill-foreground font-mono uppercase" fontSize="8" letterSpacing="0.6">
                   {s.city}
                 </text>
               </g>

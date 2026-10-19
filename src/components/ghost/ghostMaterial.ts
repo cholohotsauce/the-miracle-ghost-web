@@ -66,6 +66,8 @@ const fragmentShader = /* glsl */ `
     // The right eye's top and bottom ends; the left eye mirrors it
     vec4 ends;
     float frownTop;
+    // 0 for faces a frown leaves alone
+    float frowns;
   };
 
   uniform float uGrin;
@@ -89,6 +91,7 @@ const fragmentShader = /* glsl */ `
   uniform float uWake;
   uniform float uDizzy;
   uniform float uShock;
+  uniform float uVein;
   uniform float uTime;
 
   varying vec3 vNormal;
@@ -163,7 +166,7 @@ const fragmentShader = /* glsl */ `
   vec2 mouthInk(vec2 f, sampler2D map, Face face) {
     vec2 p = mouthSpace(f - vec2(0.0, uMouthY), face.mouth);
     // A quick crossfade, so the grin and frown never sit on the face together for long
-    float flip = smoothstep(0.3, 0.7, uFrown);
+    float flip = smoothstep(0.3, 0.7, uFrown) * face.frowns;
     vec2 a = texture2D(map, faceUv(p, face.rect)).gb;
     vec2 b = flip > 0.0 ? texture2D(map, faceUv(frownSpace(p, face.mouth, face.frownTop), face.rect)).gb : vec2(0.0);
     return mix(a, b, flip);
@@ -198,6 +201,18 @@ const fragmentShader = /* glsl */ `
     float ink = max(m.x, max(eyeInk(f, face.eyeL, map, face.rect), eyeInk(f, face.eyeR, map, face.rect)));
     ink = max(ink, max(wakeInk(f, face.ends), dizzyInk(f, face.eyeR.xy)));
     return vec2(ink, m.y);
+  }
+
+  // The cartoon anger vein: four arcs around a point high on his forehead, above the right eye, each bowed
+  // toward the middle. A stand-in until Aes sends his own vein drawing.
+  float veinInk(vec2 f) {
+    if (uVein <= 0.0) return 0.0;
+    float size = 0.095 * (0.9 + 0.1 * uVein);
+    vec2 m = abs(f - vec2(0.14, 1.3)) / size;
+    if (max(m.x, m.y) > 1.2) return 0.0;
+    float arc = abs(length(m - vec2(1.0)) - 0.78);
+    float inside = step(0.18, min(m.x, m.y)) * step(max(m.x, m.y), 1.0);
+    return (1.0 - smoothstep(0.13, 0.2, arc)) * inside * smoothstep(0.0, 0.3, uVein);
   }
 
   // A soft studio seen in a metal surface: bright overhead, a dark band at the horizon, a grey floor
@@ -273,6 +288,7 @@ const fragmentShader = /* glsl */ `
       // Ink turns white on a glowing or blacked-out body
       vec3 inkColor = mix(vec3(0.05), vec3(1.0), max(uGlow * 0.9, uShock));
       color = mix(color, inkColor, ink);
+      color = mix(color, vec3(0.86, 0.04, 0.1), veinInk(f) * vFront);
     }
 
     gl_FragColor = vec4(color, 1.0);
@@ -302,6 +318,7 @@ export type GhostUniforms = {
   uWake: { value: number };
   uDizzy: { value: number };
   uShock: { value: number };
+  uVein: { value: number };
 };
 
 /** A face's landmarks in the shape of the shader's Face struct */
@@ -312,6 +329,7 @@ export type FaceUniform = {
   mouth: THREE.Vector4;
   ends: THREE.Vector4;
   frownTop: number;
+  frowns: number;
 };
 
 export function faceUniform(face: Face): FaceUniform {
@@ -324,6 +342,7 @@ export function faceUniform(face: Face): FaceUniform {
     mouth: new THREE.Vector4(mouth.top, mouth.bottom, mouth.cx, mouth.halfW),
     ends: new THREE.Vector4(eyes[1].top[0], eyes[1].top[1], eyes[1].bottom[0], eyes[1].bottom[1]),
     frownTop: face.frownTop,
+    frowns: face.frowns ? 1 : 0,
   };
 }
 
@@ -352,6 +371,7 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     uWake: { value: 0 },
     uDizzy: { value: 0 },
     uShock: { value: 0 },
+    uVein: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -455,14 +475,25 @@ const fireFragment = /* glsl */ `
     }
 
     if (uSmoke > 0.0) {
-      // Grey smoke curling up off the head once the flames are out
-      float drift = uTime * 0.9;
-      vec2 sp = p * vec2(2.6, 1.8) + vec2(sin(p.y * 2.0 + drift) * 0.5, -drift * 1.4);
-      float s = fbm(sp);
-      // Light, broken-up puffs rising off the top of the head
-      float plume = body(p * vec2(1.8, 1.0) - vec2(0.0, 1.0 + 0.5 * s)) * smoothstep(0.6, 1.5, p.y) * smoothstep(3.3, 2.2, p.y);
-      float a = smoothstep(0.5, 0.85, plume * s * 1.5) * uSmoke * 0.4;
-      outColor = vec4(mix(outColor.rgb, vec3(0.55), a), max(outColor.a, a));
+      // Soft round puffs of grey smoke rising off his whole top edge, head and both shoulders (Aes, 2026-10-19),
+      // swelling and thinning out as they climb, frayed at the edges by noise.
+      // They fade out well below the plane's top, so no puff is ever cut off.
+      float smoke = 0.0;
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i);
+        float rise = fract(uTime * 0.3 + fract(fi * 0.618));
+        float x = mix(-1.15, 1.15, fi / 8.0);
+        // Where his outline is at x: the head in the middle, the shoulders lower down either side
+        float top = 0.7 + 0.65 * exp(-x * x * 3.0);
+        vec2 c = vec2(x + 0.15 * sin(fi * 2.3 + uTime * 0.8) * rise, top + rise * 1.2);
+        float r = 0.2 + 0.3 * rise;
+        vec2 q = (p - c) / vec2(1.0, 0.85);
+        smoke += exp(-dot(q, q) / (r * r)) * smoothstep(0.0, 0.15, rise) * (1.0 - rise);
+      }
+      float fray = fbm(p * 3.2 + vec2(0.0, -uTime * 0.9));
+      float a = smoothstep(0.08, 0.6, smoke * (0.55 + 0.9 * fray)) * uSmoke * 0.55;
+      vec3 col = mix(vec3(0.42), vec3(0.62), fray);
+      outColor = vec4(mix(outColor.rgb, col, a), max(outColor.a, a));
     }
 
     if (uZap > 0.0) {

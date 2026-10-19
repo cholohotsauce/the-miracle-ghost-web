@@ -193,6 +193,7 @@ export class GhostRig {
     uni.uWake.value = p.wake;
     uni.uDizzy.value = p.dizzy;
     uni.uShock.value = p.shock;
+    uni.uVein.value = p.vein;
     // The halo glows in the neon colors, or yellow while he is being zapped
     halo.uniforms.uColor.value.copy(p.shock > p.glow ? ZAP : this.glowColor);
     halo.uniforms.uStrength.value = Math.max(p.glow, p.shock) * 0.75;

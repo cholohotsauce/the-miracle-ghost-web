@@ -68,6 +68,8 @@ export type Pose = {
   minis: number;
   /** Electrocuted: black body, yellow sparks crackling around him */
   shock: number;
+  /** A red cartoon anger vein throbbing on his forehead */
+  vein: number;
 };
 
 export const REST: Readonly<Pose> = {
@@ -96,6 +98,7 @@ export const REST: Readonly<Pose> = {
   split: 0,
   minis: 0,
   shock: 0,
+  vein: 0,
 };
 
 /** Seconds each trick runs. `talk` holds until the speech bubble closes. */
@@ -124,25 +127,25 @@ export const TRICK_DURATION: Record<TrickName, number> = {
 
 /**
  * The face he wears for each trick. Between tricks he goes back to IDLE_FACE (faces.ts).
- * Aes's 2026-10-19 rule until his face-to-trick list arrives: the original face when idle, Grim for the poke tricks.
+ * The ten clicks follow Aes's list of 2026-10-19 (click number in the comments); "Hustler" there is the Swag face.
+ * The other tricks (the welcome grin, and the mini ghost's) keep Grim.
  */
 export const TRICK_FACE: Record<TrickName, FaceName> = {
+  backflip: "original", // 1
+  attitude: "grim", // 2
+  tornado: "original", // 3
+  clone: "original", // 4
+  boing: "original", // 5, pending Aes's new trick
+  neon: "original", // 6
+  fire: "grim", // 7
+  curious: "swag", // 8
+  zapped: "lilmad", // 9
+  talk: "lilmad", // 10, with the red vein
   grin: "grim",
   spin: "grim",
   squash: "grim",
   "annoyed shake": "grim",
   "grin pop": "grim",
-  backflip: "grim",
-  boing: "grim",
-  neon: "grim",
-  fire: "grim",
-  attitude: "grim",
-  tornado: "grim",
-  clone: "grim",
-  curious: "grim",
-  zapped: "grim",
-  // The tenth click: he snaps, then talks with his usual smile
-  talk: "original",
   bored: "original",
   yawn: "original",
   sleep: "original",
@@ -319,9 +322,8 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.rz += 0.14 * Math.sin(w * 5) * dizzy;
       out.rx = 0.1 * Math.cos(w * 5) * dizzy;
       out.x = 0.12 * Math.sin(w * 5 + 0.8) * dizzy;
-      out.frown = 0.6 * dizzy;
-      // Aes asked for the mouth a little higher here, closer to the eyes (2026-10-19)
-      out.mouthY = 0.12 * dizzy;
+      // Aes asked for the smile much closer to the eyes (2026-10-19): up to just under the spirals
+      out.mouthY = 0.3 * dizzy;
       break;
     }
     case "clone": {
@@ -348,9 +350,9 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
     }
     case "curious": {
       // Curious (replaced the jumpscare, 2026-10-19): he floats up to the screen, tilts his head one way and then
-      // the other as if studying you, then drifts back to his place
+      // the other as if studying you, then drifts back to his place. Aes asked for him 50% closer (2026-10-19).
       const near = Math.min(easeInOutCubic(u / 0.9), easeInOutCubic((d - u) / 0.9));
-      out.z = 2.2 * near;
+      out.z = 3.3 * near;
       out.y = -0.15 * near;
       out.rx = -0.06 * near;
       const tiltA = envelope(u - 0.75, 0.35, 0.35, 1.05);
@@ -374,7 +376,7 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.rz = 0.09 * Math.sin(u * 61 + 1) * shock;
       const after = u - zapEnd + 0.2;
       out.soot = 0.6 * envelope(after, 0.15, 0.6, 1.4);
-      out.smoke = 0.5 * envelope(after, 0.15, 0.5, 1.0);
+      out.smoke = 0.8 * envelope(after, 0.15, 0.6, 1.6);
       const sad = envelope(after, 0.25, 0.5, d - zapEnd + 0.2);
       out.frown = Math.max(out.frown * (1 - sad), 0.9 * sad);
       out.grin *= 1 - sad;
@@ -385,8 +387,10 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       break;
     }
     case "talk": {
-      // Fed up: puffs up and shakes with a scowl. Then, as the speech bubble opens, he shrinks below it
-      // and goes back to his usual smile, and keeps it.
+      // Fed up: puffs up and shakes with the Lilmad face and a red vein. Then, as the speech bubble opens,
+      // he shrinks below it, still mad.
+      // A red anger vein pops on his forehead and keeps throbbing while the bubble is open (Aes, 2026-10-19)
+      out.vein = smooth(u / 0.2) * (0.85 + 0.15 * Math.sin(u * 9));
       if (u < TALK_LEAD) {
         const e = envelope(u, 0.1, 0.25, TALK_LEAD);
         out.frown = e;
