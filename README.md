@@ -19,7 +19,7 @@ npm run lint
 | --- | --- |
 | The ghost on Home (tricks, idle moods, speech bubble, paint mode) | `src/components/GhostLanding.tsx`, `src/components/ghost/` |
 | Trick list and order | `src/components/ghost/tricks.ts` |
-| Which clone trick plays (A: a twin, B: a swarm of tiny ghosts) | `CLONE_OPTION` in `src/components/ghost/tricks.ts`. Add `?clone=a` or `?clone=b` to the address to try either one. |
+| How many tiny ghosts the clone trick splits into | `MINI_COUNT` in `src/components/ghost/tricks.ts` (the tiny ghost model comes from `scripts/bake-mini-ghost.mjs`) |
 | Idle moods (bored, yawn, asleep) | `src/lib/useIdleMood.ts` |
 | Mini ghost on every other page | `src/components/site/MiniGhost.tsx` |
 | Spray-paint page changes | `src/components/site/PageTransition.tsx`, `TransitionLink.tsx` |
@@ -60,7 +60,7 @@ Stats: turn on Web Analytics in Vercel → Project → Analytics. Named events (
 
 After Aes sends a new model:
 
-1. `node scripts/bake-ghost-model.mjs "<path to .obj>"` rebuilds the 3D model.
+1. `node scripts/bake-ghost-model.mjs "<path to .obj>"` rebuilds the 3D model. Then run `node scripts/bake-mini-ghost.mjs` to rebuild the clone trick's tiny ghost from it.
 2. `npm run build && npx next start -p 3123`, then `node scripts/render-ghost-poster.mjs http://localhost:3123` rebuilds the still poster, the link preview image, and the icons. It needs Playwright (`npm i -D playwright`).
 
 ## Regenerating the world map
