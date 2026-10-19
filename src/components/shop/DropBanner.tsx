@@ -6,36 +6,37 @@ import Countdown from "./Countdown";
  * The black banner at the top of the Shop (Aes's mockup, 2026-10-15):
  * drop-alert sign-up on the left, NEXT DROP countdown on the right.
  * With no drop scheduled, the countdown makes way for "Soon".
+ * Aes asked for it 30% shorter at the same width (2026-10-19): tighter padding and gaps, slightly smaller type.
  */
 export default function DropBanner({ drop }: { drop: NextDrop | null }) {
   return (
     <section
       aria-labelledby="next-drop"
-      className="relative mb-12 overflow-hidden bg-foreground px-5 py-8 text-background md:mb-16 md:px-10 md:py-12"
+      className="relative mb-12 overflow-hidden bg-foreground px-5 py-3.5 text-background md:mb-16 md:px-10 md:py-6"
     >
       <SprayBackdrop />
       {drop?.sample && (
-        <span className="absolute right-3 top-3 border border-background/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.25em] text-background/70">
+        <span className="absolute right-3 top-3 border border-background/40 md:left-3 md:right-auto px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.25em] text-background/70">
           Sample
         </span>
       )}
-      <div className="relative flex flex-col-reverse gap-10 md:flex-row md:items-center md:justify-between">
+      <div className="relative flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-between">
         <div className="w-full max-w-md">
           <EarlyAccessForm from="shop-drop-alerts" banner prompt="Sign up for drop alerts" cta="Sign up" />
         </div>
         <div className="flex flex-col items-start md:items-center">
-          <h2 id="next-drop" className="whitespace-nowrap font-drip text-[13vw] uppercase leading-none md:text-7xl">
+          <h2 id="next-drop" className="whitespace-nowrap font-drip text-[10vw] uppercase leading-none md:text-6xl">
             {drop?.title ?? "Next drop"}
           </h2>
           {drop ? (
             <Countdown
               to={drop.releasesAt}
-              className="mt-3 gap-4 text-[var(--color-neon-green)] md:gap-5"
-              numberClassName="text-[11vw] font-black md:text-6xl"
-              labelClassName="font-mono text-xs tracking-[0.2em] md:text-sm"
+              className="mt-1.5 gap-4 text-[var(--color-neon-green)] md:mt-2 md:gap-5"
+              numberClassName="text-[8vw] font-black md:text-5xl"
+              labelClassName="font-mono text-[10px] tracking-[0.2em] md:text-xs"
             />
           ) : (
-            <p className="mt-3 text-5xl font-black uppercase text-[var(--color-neon-green)] md:text-6xl">Soon</p>
+            <p className="mt-1.5 text-4xl font-black uppercase text-[var(--color-neon-green)] md:mt-2 md:text-5xl">Soon</p>
           )}
         </div>
       </div>
