@@ -147,8 +147,9 @@ export const TRICK_FACE: Record<TrickName, FaceName> = {
   "annoyed shake": "grim",
   "grin pop": "grim",
   bored: "original",
-  yawn: "original",
-  sleep: "original",
+  // Drowsy and asleep he wears the Sleepy face, painted with his eyes already shut
+  yawn: "sleepy",
+  sleep: "sleepy",
   waking: "original",
   grumpy: "original",
 };

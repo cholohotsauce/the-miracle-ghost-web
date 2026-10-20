@@ -7,7 +7,7 @@ import { FACES, IDLE_FACE, type Face } from "./faces";
  * faces between tricks without a pop.
  * On top of the clay: a wider grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
  * plus the extras a few tricks paint on: flames and soot, a groggy waking face, spiral dizzy eyes, and an electric shock.
- * Aes asked for no eyebrows on any face (2026-10-19).
+ * Aes asked for no eyebrows on any face (2026-10-19). Faces painted with blush (Sleepy) get it drawn as soft spots.
  * Colors are passed as sRGB triples and written out as-is.
  * `uSilver` swaps the matte clay for a brushed silver finish (Aes asked to try it, 2026-10-19).
  */
@@ -68,6 +68,13 @@ const fragmentShader = /* glsl */ `
     float frownTop;
     // 0 for faces a frown leaves alone
     float frowns;
+    // 1 for faces painted with their eyes shut: no lids or blinks
+    float shut;
+    // Blush: left and right cheek (center, half size), how far the blur runs past the core, and its color (0 for none)
+    vec4 cheekL;
+    vec4 cheekR;
+    float cheekBlur;
+    vec3 cheekColor;
   };
 
   uniform float uGrin;
@@ -126,11 +133,13 @@ const fragmentShader = /* glsl */ `
   }
 
   // One painted eye, squashed toward its center while blinking, cut from the top by the lid
-  float eyeInk(vec2 f, vec4 eye, sampler2D map, vec4 rect) {
+  float eyeInk(vec2 f, vec4 eye, sampler2D map, vec4 rect, float shut) {
     vec2 q = f - eye.xy;
     if (abs(q.x) > eye.z * 4.0) return 0.0;
     // Dizzy: spiral eyes take their place
     if (uDizzy > 0.5) return 0.0;
+    // Already painted shut
+    if (shut > 0.5) return texture2D(map, faceUv(f, rect)).r;
     float lidEdge = eye.w * (1.0 - 1.4 * uLid);
     float lid = 1.0 - smoothstep(lidEdge - 0.01, lidEdge + 0.01, q.y);
     float open = texture2D(map, faceUv(eye.xy + vec2(q.x, q.y / uBlink), rect)).r * lid;
@@ -198,9 +207,22 @@ const fragmentShader = /* glsl */ `
   // Everything one face draws at f: (ink, white of the teeth)
   vec2 faceInk(vec2 f, sampler2D map, Face face) {
     vec2 m = mouthInk(f, map, face);
-    float ink = max(m.x, max(eyeInk(f, face.eyeL, map, face.rect), eyeInk(f, face.eyeR, map, face.rect)));
+    float ink = max(m.x, max(eyeInk(f, face.eyeL, map, face.rect, face.shut), eyeInk(f, face.eyeR, map, face.rect, face.shut)));
     ink = max(ink, max(wakeInk(f, face.ends), dizzyInk(f, face.eyeR.xy)));
     return vec2(ink, m.y);
+  }
+
+  // One soft blush spot: solid in its core, fading out over the blur
+  float spot(vec2 f, vec4 s, float blur) {
+    float d = length((f - s.xy) / s.zw);
+    return 1.0 - smoothstep(1.0 - blur, 1.0 + blur, d);
+  }
+
+  // A face's painted blush, premultiplied (color times amount, amount) so two faces crossfade cleanly
+  vec4 cheekPaint(vec2 f, Face face) {
+    if (face.cheekL.z <= 0.0) return vec4(0.0);
+    float a = max(spot(f, face.cheekL, face.cheekBlur), spot(f, face.cheekR, face.cheekBlur));
+    return vec4(face.cheekColor * a, a);
   }
 
   // The cartoon anger vein: four arcs around a point high on his forehead, above the right eye, each bowed
@@ -281,6 +303,10 @@ const fragmentShader = /* glsl */ `
       vec2 f = vShape - uLook;
       vec2 m = faceInk(f, uFaceMapA, uFaceA);
       if (uFaceMix > 0.0) m = mix(m, faceInk(f, uFaceMapB, uFaceB), uFaceMix);
+      // Blush first, under the ink; it burns off with fire and soot, and hides on a glowing or blacked-out body
+      vec4 blush = mix(cheekPaint(f, uFaceA), cheekPaint(f, uFaceB), uFaceMix);
+      float blushFade = vFront * (1.0 - max(max(uGlow, uShock), max(uFire, uSoot)));
+      color = color * (1.0 - blush.a * blushFade) + blush.rgb * blushFade;
       float ink = m.x * vFront;
       // The teeth: bright white, softly shaded, and gone on a glowing or blacked-out body so the white ink still shows
       float teeth = m.y * vFront * (1.0 - max(uGlow * 0.85, uShock));
@@ -330,11 +356,18 @@ export type FaceUniform = {
   ends: THREE.Vector4;
   frownTop: number;
   frowns: number;
+  shut: number;
+  cheekL: THREE.Vector4;
+  cheekR: THREE.Vector4;
+  cheekBlur: number;
+  cheekColor: THREE.Vector3;
 };
 
 export function faceUniform(face: Face): FaceUniform {
   const { rect, eyes, mouth } = face;
   const eye = (i: number) => new THREE.Vector4(eyes[i].cx, eyes[i].cy, eyes[i].halfW, eyes[i].halfH);
+  const spots = face.cheeks?.spots;
+  const cheek = (i: number) => (spots ? new THREE.Vector4(spots[i].cx, spots[i].cy, spots[i].rx, spots[i].ry) : new THREE.Vector4());
   return {
     rect: new THREE.Vector4(rect.minX, rect.minY, rect.maxX - rect.minX, rect.maxY - rect.minY),
     eyeL: eye(0),
@@ -343,6 +376,11 @@ export function faceUniform(face: Face): FaceUniform {
     ends: new THREE.Vector4(eyes[1].top[0], eyes[1].top[1], eyes[1].bottom[0], eyes[1].bottom[1]),
     frownTop: face.frownTop,
     frowns: face.frowns ? 1 : 0,
+    shut: face.eyesShut ? 1 : 0,
+    cheekL: cheek(0),
+    cheekR: cheek(1),
+    cheekBlur: spots ? (spots[0].blur + spots[1].blur) / 2 : 0,
+    cheekColor: face.cheeks ? new THREE.Vector3(...face.cheeks.color) : new THREE.Vector3(),
   };
 }
 
