@@ -1,7 +1,8 @@
 /**
  * Shows and "ghost sightings" for the Shows page. A sighting is anywhere the ghost turns up:
  * murals, graffiti, stickers, paste-ups, anywhere in the world (Aes, 2026-10-19).
- * Replace the samples with Aes's real list. Entries marked `sample: true` show a SAMPLE tag.
+ * The sightings below are still samples: replace them with Aes's real list. Entries marked
+ * `sample: true` show a SAMPLE tag.
  *
  * Sightings are pinned by city on purpose, never at an exact address:
  * street pieces can be unsanctioned, and a pin should not lead anyone to the wall or the artist.
@@ -22,19 +23,10 @@ export type Show = {
 
 export const shows: Show[] = [
   {
-    title: "Ghost Story",
-    venue: "A gallery in Wynwood",
+    title: "Partners in Crime",
+    venue: "Central Command Gallery",
     city: "Miami, FL",
-    start: "2026-12-04",
-    end: "2026-12-07",
-    sample: true,
-  },
-  {
-    title: "Glow in the Dark",
-    venue: "A pop-up in Little Haiti",
-    city: "Miami, FL",
-    start: "2025-12-05",
-    sample: true,
+    start: "2026-07-25",
   },
 ];
 

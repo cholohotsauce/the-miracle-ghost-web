@@ -16,40 +16,35 @@ export const revalidate = 3600;
 const fmt = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-function ShowRow({ show, upcoming }: { show: Show; upcoming: boolean }) {
+// Laid out like Aes's reference (2026-10-20): bold label, then date, title, and venue as plain
+// stacked lines, with thin rules only between the two lists
+function ShowRow({ show }: { show: Show }) {
   return (
-    <li className="grid gap-3 border-b-2 border-line py-7 md:grid-cols-[11rem_1fr_auto] md:items-center md:gap-8 md:py-10">
-      <p className="font-mono text-xs uppercase leading-loose tracking-[0.18em] md:text-sm">
+    <li className="flex flex-col gap-7 py-2 md:gap-8">
+      <p className="text-xl uppercase md:text-2xl">
         {fmt(show.start)}
-        {show.end && (
-          <>
-            <br />
-            to {fmt(show.end)}
-          </>
-        )}
+        {show.end && <> to {fmt(show.end)}</>}
       </p>
-      <div>
-        <h3 className={`font-black uppercase leading-none tracking-tight ${upcoming ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"}`}>
-          {show.title}
-          {show.sample && (
-            <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
-              SAMPLE
-            </span>
-          )}
-        </h3>
-        <p className="mt-3 text-base md:text-lg">
-          {show.venue} · {show.city}
-        </p>
-        {show.note && <p className="mt-1 text-sm text-foreground/60">{show.note}</p>}
-      </div>
+      <h3 className="text-xl font-bold uppercase leading-tight md:text-2xl">
+        {show.title}
+        {show.sample && (
+          <span className="ml-2 inline-block -translate-y-0.5 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
+            SAMPLE
+          </span>
+        )}
+      </h3>
+      <p className="text-xl md:text-2xl">
+        {show.venue} · {show.city}
+      </p>
+      {show.note && <p className="-mt-4 text-sm text-foreground/60">{show.note}</p>}
       {show.link && (
         <a
           href={show.link}
           target="_blank"
           rel="noreferrer"
-          className="inline-block w-fit rounded-full bg-foreground px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-background md:col-start-auto"
+          className="inline-block w-fit rounded-full bg-foreground px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-background"
         >
-          {upcoming ? "Details" : "Recap"}
+          Details
         </a>
       )}
     </li>
@@ -57,9 +52,7 @@ function ShowRow({ show, upcoming }: { show: Show; upcoming: boolean }) {
 }
 
 function ListLabel({ children }: { children: string }) {
-  return (
-    <h3 className="border-b-2 border-line pb-2 font-mono text-xs uppercase tracking-[0.3em] md:text-sm">{children}</h3>
-  );
+  return <h3 className="mb-7 text-xl font-bold uppercase md:mb-8 md:text-2xl">{children}</h3>;
 }
 
 export default function ShowsPage() {
@@ -90,25 +83,27 @@ export default function ShowsPage() {
           <h2 id="timeline" className="sr-only">
             Timeline
           </h2>
-          <ListLabel>Upcoming</ListLabel>
-          {upcoming.length ? (
-            <ul className="mb-14">
-              {upcoming.map((s) => (
-                <ShowRow key={s.title + s.start} show={s} upcoming />
-              ))}
-            </ul>
-          ) : (
-            <p className="mb-14 border-b-2 border-line py-8 font-drip text-2xl uppercase">Nothing booked. The ghost is plotting.</p>
-          )}
-          {past.length > 0 && (
-            <>
-              <ListLabel>Past exhibitions</ListLabel>
-              <ul>
-                {past.map((s) => (
-                  <ShowRow key={s.title + s.start} show={s} upcoming={false} />
+          <div className="pb-10 md:pb-12">
+            <ListLabel>Upcoming</ListLabel>
+            {upcoming.length ? (
+              <ul className="flex flex-col gap-12">
+                {upcoming.map((s) => (
+                  <ShowRow key={s.title + s.start} show={s} />
                 ))}
               </ul>
-            </>
+            ) : (
+              <p className="text-xl font-bold uppercase md:text-2xl">To be announced</p>
+            )}
+          </div>
+          {past.length > 0 && (
+            <div className="border-t border-foreground/10 py-10 md:py-12">
+              <ListLabel>Past exhibitions</ListLabel>
+              <ul className="flex flex-col gap-12">
+                {past.map((s) => (
+                  <ShowRow key={s.title + s.start} show={s} />
+                ))}
+              </ul>
+            </div>
           )}
         </section>
 
