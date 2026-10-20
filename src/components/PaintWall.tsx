@@ -25,7 +25,8 @@ const NOZZLE = 22;
 const STEP = 4;
 
 type Puff = { x: number; y: number; color: number; variant: number; born: number };
-type Drip = { x: number; y: number; len: number; max: number; w: number; color: number; born: number };
+/** A run of paint: it starts quick and slows as it thins out, `speed` in CSS pixels per second */
+type Drip = { x: number; y: number; len: number; max: number; w: number; speed: number; color: number; born: number };
 
 /** Sprite variants per color, picked at random so the stroke never looks stamped */
 const VARIANTS = 3;
@@ -34,6 +35,8 @@ const VARIANTS = 3;
  * One spray puff, drawn once and stamped many times along a stroke. Like a real can:
  * a dense, solid core, a soft feathered edge, and fine overspray mist scattered well past it.
  * Aes asked for a more solid stroke (2026-10-19): the core is close to opaque and the mist is lighter.
+ * The soft edge fades to the same color at zero opacity. Fading to "transparent" (transparent black)
+ * left a grey rim on every puff, which made the bright colors look muddy (Aes, 2026-10-20).
  */
 function makeSprite(color: string, dpr: number) {
   const size = Math.ceil(NOZZLE * 2 * dpr);
@@ -44,7 +47,7 @@ function makeSprite(color: string, dpr: number) {
   const g = ctx.createRadialGradient(r, r, 0, r, r, r * 0.62);
   g.addColorStop(0, color);
   g.addColorStop(0.7, color);
-  g.addColorStop(1, "transparent");
+  g.addColorStop(1, `${color}00`);
   ctx.globalAlpha = 0.7;
   ctx.fillStyle = g;
   ctx.beginPath();
@@ -85,6 +88,17 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
     });
     const puffs: Puff[] = [];
     const drips: Drip[] = [];
+    const drip = (x: number, y: number, now: number, heavy: boolean) =>
+      drips.push({
+        x: x + (Math.random() - 0.5) * NOZZLE * 1.2,
+        y: y + NOZZLE * 0.3,
+        len: 0,
+        max: (heavy ? 120 : 50) + Math.random() * (heavy ? 220 : 140),
+        w: (heavy ? 4 : 2.5) + Math.random() * 3.5,
+        speed: 70 + Math.random() * 90,
+        color: colorRef.current,
+        born: now,
+      });
     let last: { x: number; y: number } | null = null;
     let still = 0;
     let raf = 0;
@@ -108,11 +122,13 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
       }
       puffs.push(puff(x, y, colorRef.current, now));
       if (puffs.length > 4000) puffs.splice(0, puffs.length - 4000);
-      // Holding the can in one spot builds up paint until it runs. Aes asked for a little more dripping (2026-10-19).
-      if (still > 6 || Math.random() < 0.018) {
-        drips.push({ x: x + (Math.random() - 0.5) * NOZZLE, y: y + NOZZLE * 0.3, len: 0, max: 40 + Math.random() * 110, w: 2.5 + Math.random() * 3.5, color: colorRef.current, born: now });
+      // Holding the can in one spot builds up paint until it runs, long and heavy. Moving strokes run here and there.
+      // Aes asked for more dripping (2026-10-19, and again 2026-10-20).
+      if (still > 3) {
+        drip(x, y, now, true);
+        if (Math.random() < 0.5) drip(x, y, now, true);
         still = 0;
-      }
+      } else if (Math.random() < 0.05) drip(x, y, now, false);
       last = { x, y };
     };
 
@@ -143,8 +159,11 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
 
     const alphaAt = (age: number) => (age < HOLD ? 1 : Math.max(0, 1 - (age - HOLD) / (LIFE - HOLD)));
 
+    let prev = performance.now() / 1000;
     const frame = () => {
       const now = performance.now() / 1000;
+      const dt = Math.min(now - prev, 0.05);
+      prev = now;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       while (puffs.length && now - puffs[0].born > LIFE) puffs.shift();
       for (const p of puffs) {
@@ -159,7 +178,9 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
           drips.splice(i, 1);
           continue;
         }
-        d.len = Math.min(d.max, d.len + 0.9);
+        d.len = Math.min(d.max, d.len + d.speed * dt);
+        // The run slows as it thins out
+        d.speed = Math.max(12, d.speed * (1 - 0.9 * dt));
         ctx.globalAlpha = alphaAt(age);
         ctx.fillStyle = COLORS[d.color].value;
         ctx.beginPath();
