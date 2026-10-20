@@ -8,10 +8,11 @@
  * Needs Playwright with Chromium (`npm i -D playwright` once, or a global install).
  * Writes:
  *   public/ghost-poster.webp                            the ghost alone, cropped to its outline
- *   src/app/opengraph-image.png                         link preview, 1200×630
+ *   src/app/opengraph-image.png, src/app/twitter-image.png   link preview, 1200×630
  * Re-run after Aes sends a new model (after scripts/bake-ghost-model.mjs).
  */
 
+import fs from "node:fs/promises";
 import sharp from "sharp";
 
 const base = process.argv[2] ?? "http://localhost:3000";
@@ -38,23 +39,22 @@ const trimmed = await sharp(shot).trim({ threshold: 1 }).png().toBuffer();
 const ghost = await sharp(trimmed).resize({ height: 900, withoutEnlargement: true }).png({ compressionLevel: 9 }).toBuffer();
 await sharp(ghost).webp({ quality: 82, alphaQuality: 90 }).toFile("public/ghost-poster.webp");
 
-// Link preview: the ghost on the white wall, with the name in the site's drip lettering
+// Link preview: the ghost alone on the white wall, the name in the site font, and a neon green/pink/teal tick
 const og = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
 await og.goto(base, { waitUntil: "networkidle" });
 await og.evaluate((src) => {
+  const tick = (color) => `<i style="width:26px;height:5px;background:${color}"></i>`;
   document.body.innerHTML = `
-    <div style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;gap:56px;padding:0 80px 0 90px;z-index:99999">
-      <img src="${src}" style="height:520px;width:auto">
-      <div>
-        <div class="font-drip" style="font-size:108px;line-height:.95;color:#0a0a0a;text-transform:uppercase">The Miracle<br>Ghost</div>
-        <div style="margin-top:28px;width:130px;height:9px;background:#39ff14"></div>
-        <div style="margin-top:24px;font:600 22px ui-monospace,monospace;letter-spacing:.3em;color:#0a0a0a99">AES · MIAMI</div>
-      </div>
+    <div style="position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999">
+      <img src="${src}" style="height:360px;width:auto">
+      <div style="margin-top:34px;font:700 58px var(--font-space-grotesk);letter-spacing:.06em;color:#0a0a0a">THE MIRACLE GHOST</div>
+      <div style="margin-top:22px;display:flex;gap:5px">${tick("#39ff14")}${tick("#ff00ff")}${tick("#00ffff")}</div>
     </div>`;
 }, `data:image/png;base64,${ghost.toString("base64")}`);
 await og.evaluate(() => document.fonts.ready);
 await og.waitForTimeout(300);
 await og.screenshot({ path: "src/app/opengraph-image.png", type: "png" });
+await fs.copyFile("src/app/opengraph-image.png", "src/app/twitter-image.png");
 await browser.close();
 
 console.log("Wrote the poster and share image.");
