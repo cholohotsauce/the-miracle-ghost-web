@@ -32,6 +32,10 @@ const roundFont = Fredoka({
   subsets: ["latin"],
 });
 
+// Font preview Aes asked for (2026-10-20): open any page with ?font=helvetica to see the whole site in
+// Helvetica Bold, and ?font=off to go back. It sticks for the visit so the other pages show it too.
+const FONT_PREVIEW_SCRIPT = `try{var f=new URLSearchParams(location.search).get("font");if(f)sessionStorage.setItem("font",f);f=sessionStorage.getItem("font");if(f==="helvetica")document.documentElement.dataset.font=f}catch(e){}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
@@ -62,7 +66,11 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${dripFont.variable} ${roundFont.variable} antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: FONT_PREVIEW_SCRIPT }} />
+      </head>
       <body className="min-h-[100dvh] flex flex-col bg-background text-foreground">
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(artistJsonLd)} />
         <PageTransitionProvider>
