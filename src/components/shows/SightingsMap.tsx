@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Sighting } from "@/content/shows";
 import { WORLD_LAND, WORLD_PROJECTION, WORLD_SIZE } from "@/content/worldMap";
@@ -29,7 +29,8 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 /**
  * Aes's own ghost drawing as the pin, from his "Original Ghost Dropless" file (2026-10-19), in two layers:
- * a body mask that takes the pin's color, and his black linework on top (scripts/make-icons.mjs).
+ * a body mask that takes the pin's color, and his black outline on top (scripts/make-icons.mjs).
+ * Aes is trying the pins without a face (2026-10-20); ?map=classic shows the face again.
  * The pin's point (0, 0) sits at the tip of the hem, on the city. Aes asked for it about 20% bigger.
  */
 const PIN = { x: -12.6, y: -28, width: 25.2, height: 28.9 };
@@ -37,10 +38,27 @@ const PIN = { x: -12.6, y: -28, width: 25.2, height: 28.9 };
 const FAN = 0.55;
 const PIN_BODY = "/sightings/ghost-pin-body.png";
 const PIN_INK = "/sightings/ghost-pin-ink.png";
+const PIN_INK_FACE = "/sightings/ghost-pin-ink-face.png";
+
+/**
+ * The look Aes is trying out (2026-10-20): green land and faceless pins.
+ * ?map=classic brings back the black land and the pins with a face, to compare. Once he picks, set the default here.
+ */
+const DEFAULT_LOOK: "green" | "classic" = "green";
+
+function askedLook() {
+  const asked = new URLSearchParams(window.location.search).get("map");
+  return asked === "green" || asked === "classic" ? asked : DEFAULT_LOOK;
+}
+
+/** The look asked for in the address; the server and the first paint use the default */
+const useMapLook = () => useSyncExternalStore(noSubscribe, askedLook, () => DEFAULT_LOOK);
+const noSubscribe = () => () => {};
 
 export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const reducedMotion = useReducedMotion() ?? false;
   const [open, setOpen] = useState<number | null>(null);
+  const classic = useMapLook() === "classic";
   // Pins keep their size on screen while the map zooms
   const pinScale = (open !== null ? 1 / ZOOM : 1) * 2;
   // Several pieces in one city fan out around its center, side by side first, spaced by the pins' size on screen
@@ -80,10 +98,10 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
           </mask>
         </defs>
         <rect width={W} height={H} className="fill-background" onClick={() => setOpen(null)} />
-        {/* Aes asked for all the land solid black on the white page (2026-10-19) */}
+        {/* Solid land on the white page: toxic green (trying 2026-10-20), black in the classic look (2026-10-19) */}
         <path
           d={WORLD_LAND}
-          className="fill-foreground stroke-foreground"
+          className={`stroke-foreground ${classic ? "fill-foreground" : "fill-[var(--color-neon-green)]"}`}
           strokeWidth="1.2"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -103,13 +121,15 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             transition={{ duration: reducedMotion ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
             style={{ transformBox: "view-box", originX: 0, originY: 0 }}
           >
-            {/* Aes's ghost: white, neon green when open, faded when the piece has been buffed */}
+            {/* Aes's ghost: white, lit up when open (pink on the green land, green on the black), faded when the piece has been buffed */}
             <rect
               {...PIN}
               mask="url(#ghost-pin)"
-              className={`transition-colors ${open === i ? "fill-[var(--color-neon-green)]" : "fill-background"}`}
+              className={`transition-colors ${
+                open !== i ? "fill-background" : classic ? "fill-[var(--color-neon-green)]" : "fill-[var(--color-neon-pink)]"
+              }`}
             />
-            <image href={PIN_INK} {...PIN} preserveAspectRatio="none" opacity={s.status === "buffed" && open !== i ? 0.45 : 1} />
+            <image href={classic ? PIN_INK_FACE : PIN_INK} {...PIN} preserveAspectRatio="none" opacity={s.status === "buffed" && open !== i ? 0.45 : 1} />
             {/* The city, revealed over the selected ghost */}
             {open === i && (
               <g transform={`translate(0 ${PIN.y - 7})`} pointerEvents="none">

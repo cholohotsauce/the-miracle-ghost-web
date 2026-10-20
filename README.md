@@ -21,6 +21,8 @@ npm run lint
 | Trick list and order | `src/components/ghost/tricks.ts` |
 | Ghost faces, and which face goes with which trick | `src/components/ghost/faces.ts`, `TRICK_FACE` in `src/components/ghost/tricks.ts` |
 | Clay or silver finish (try silver with `?finish=silver`) | `DEFAULT_FINISH` in `src/components/ghost/MiracleGhost.tsx` |
+| Patience line colors (green, orange at the fire trick, then red) | `patienceColor` in `src/components/GhostLanding.tsx` |
+| Map look: green land and faceless pins, or black land and pins with a face (try with `?map=classic`) | `DEFAULT_LOOK` in `src/components/shows/SightingsMap.tsx` |
 | How many tiny ghosts the clone trick splits into | `MINI_COUNT` in `src/components/ghost/tricks.ts` (the tiny ghost model comes from `scripts/bake-mini-ghost.mjs`) |
 | Idle moods (bored, yawn, asleep) | `src/lib/useIdleMood.ts` |
 | Mini ghost on every other page | `src/components/site/MiniGhost.tsx` |
