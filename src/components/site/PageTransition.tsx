@@ -6,9 +6,9 @@ import { motion, useReducedMotion, type Transition } from "framer-motion";
 
 /**
  * Page changes as a clean black panel edged in toxic green: it slides down over the page while the
- * next page's name rises in letter by letter, the next page loads behind it, and the panel keeps
- * sliding down to reveal it.
- * Aes asked for no drips on it (2026-10-20).
+ * next page's name drops in letter by letter, falling the same way as the panel. The next page loads
+ * behind it, and the panel keeps sliding down to reveal it.
+ * Aes asked for no drips on it, and for the letters to fall with the panel, not rise (2026-10-20).
  * Links opt in through TransitionLink. Browser back and forward stay instant.
  */
 
@@ -61,7 +61,7 @@ function PaintCurtain({ phase, label, onCovered, onRevealed }: {
       {/* A thin band of toxic green on both edges: it leads the panel down and trails it off */}
       <div className="absolute inset-x-0 bottom-full h-2 bg-[var(--color-neon-green)]" />
       <div className="flex h-full w-full items-center justify-center overflow-hidden bg-foreground">
-        {/* The page name rises in letter by letter while the panel covers, and blurs away as it slides off */}
+        {/* The page name drops in letter by letter while the panel covers, and blurs away as it slides off */}
         <motion.span
           className="flex font-drip text-[clamp(3rem,14vw,9rem)] uppercase leading-none text-background"
           initial={false}
@@ -70,12 +70,16 @@ function PaintCurtain({ phase, label, onCovered, onRevealed }: {
         >
           {[...label].map((ch, i) => (
             <motion.span
-              // A fresh key on each trip, so the letters rise again even when the name is the same
+              // A fresh key on each trip, so the letters drop again even when the name is the same
               key={`${phase === "idle" ? "off" : "on"}-${i}`}
               className="inline-block whitespace-pre"
-              initial={{ y: "110%", opacity: 0 }}
+              initial={{ y: "-120%", opacity: 0 }}
               animate={{ y: "0%", opacity: 1 }}
-              transition={{ duration: 0.45, delay: 0.2 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+              // A quick fall with a small settle as each letter lands
+              transition={{
+                y: { type: "spring", stiffness: 520, damping: 22, mass: 0.9, delay: 0.15 + i * 0.05 },
+                opacity: { duration: 0.15, delay: 0.15 + i * 0.05 },
+              }}
             >
               {ch}
             </motion.span>

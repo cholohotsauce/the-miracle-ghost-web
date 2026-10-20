@@ -3,12 +3,13 @@
  *   public/sightings/ghost-pin-body.png  the map pin's body mask (white = inside), from original-ghost-dropless.png
  *   public/sightings/ghost-pin-ink.png   the map pin's black outline, without the face (Aes, 2026-10-20)
  *   public/sightings/ghost-pin-ink-face.png  the same outline with his eyes and smile, for ?map=classic
- *   src/app/icon.png, src/app/apple-icon.png  the browser and home-screen icons, from ghost-silhouette.png
+ *   src/app/icon.png, src/app/favicon.ico, src/app/apple-icon.png  the browser and home-screen icons, from ghost-silhouette.png
  *
  * Usage: node scripts/make-icons.mjs
  * Re-run when Aes sends a new pin or icon drawing (keep the same file names in scripts/art/).
  */
 
+import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
 
 const PIN_SRC = "scripts/art/original-ghost-dropless.png";
@@ -105,19 +106,63 @@ function largestPiece(mask, width, height) {
   console.log(`Pin: ${width}×${height} (aspect ${(width / height).toFixed(4)})`);
 }
 
-// Icons: the black silhouette, centered. The browser icon stays transparent; the home-screen icon sits on white.
-for (const [file, size, background] of [
-  ["src/app/icon.png", 512, "#ffffff00"],
-  ["src/app/apple-icon.png", 180, "#ffffff"],
-]) {
-  const inner = Math.round(size * 0.86);
-  const ghost = await sharp(ICON_SRC)
-    .trim({ threshold: 1 })
-    .resize({ width: inner, height: inner, fit: "contain", background: "#ffffff00" })
-    .toBuffer();
-  await sharp({ create: { width: size, height: size, channels: 4, background } })
+// Icons: the black silhouette, centered. The home-screen icon sits on white. The browser icons stay
+// transparent but get a thin white rim, so the black ghost still shows on a dark tab bar (Aes uses dark
+// mode and could not see it, 2026-10-20).
+const iconGhost = (inner) =>
+  sharp(ICON_SRC).trim({ threshold: 1 }).resize({ width: inner, height: inner, fit: "contain", background: "#ffffff00" });
+
+/** The black ghost on a white rim `rim` pixels wide, as a size×size PNG */
+async function rimmedIcon(size, rim) {
+  const inner = size - 2 * rim - Math.round(size * 0.04);
+  const ghost = await iconGhost(inner).toBuffer();
+  const { data } = await sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff00" } })
+    .composite([{ input: ghost, gravity: "center" }])
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const alpha = new Uint8Array(size * size);
+  for (let i = 0; i < alpha.length; i++) alpha[i] = data[i * 4 + 3];
+  const grown = dilate(alpha, size, size, rim);
+  const rimmed = Buffer.alloc(size * size * 4);
+  for (let i = 0; i < alpha.length; i++) {
+    rimmed.fill(255, i * 4, i * 4 + 3);
+    rimmed[i * 4 + 3] = grown[i];
+  }
+  return sharp(rimmed, { raw: { width: size, height: size, channels: 4 } })
     .composite([{ input: ghost, gravity: "center" }])
     .png({ compressionLevel: 9 })
-    .toFile(file);
+    .toBuffer();
+}
+
+/** An .ico file holding PNG images, which every current browser reads */
+function ico(pngs) {
+  const header = Buffer.alloc(6 + 16 * pngs.length);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(pngs.length, 4);
+  let offset = header.length;
+  pngs.forEach(({ size, png }, i) => {
+    const e = 6 + 16 * i;
+    header[e] = size >= 256 ? 0 : size;
+    header[e + 1] = size >= 256 ? 0 : size;
+    header.writeUInt16LE(1, e + 4);
+    header.writeUInt16LE(32, e + 6);
+    header.writeUInt32LE(png.length, e + 8);
+    header.writeUInt32LE(offset, e + 12);
+    offset += png.length;
+  });
+  return Buffer.concat([header, ...pngs.map((p) => p.png)]);
+}
+
+await writeFile("src/app/icon.png", await rimmedIcon(512, 22));
+// Small sizes are drawn at their own size, so the rim stays a crisp pixel wide
+const icoSizes = await Promise.all([16, 32, 48].map(async (size) => ({ size, png: await rimmedIcon(size, size < 48 ? 1 : 2) })));
+await writeFile("src/app/favicon.ico", ico(icoSizes));
+{
+  const size = 180;
+  const ghost = await iconGhost(Math.round(size * 0.86)).toBuffer();
+  await sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff" } })
+    .composite([{ input: ghost, gravity: "center" }])
+    .png({ compressionLevel: 9 })
+    .toFile("src/app/apple-icon.png");
 }
 console.log("Wrote the map pin and the icons.");
