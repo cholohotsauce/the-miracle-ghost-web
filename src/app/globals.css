@@ -23,9 +23,10 @@
   --color-sleepy-blue: #3b82f6; /* The sleeping ghost's Z's */
   --color-drip-red: #e10b1f; /* Paint running off the Shop title */
 
-  --font-sans: var(--font-geist-sans), "Inter", "Roboto", "Outfit", Arial, Helvetica, sans-serif;
-  --font-mono: var(--font-geist-mono);
-  --font-drip: var(--font-rubik-wet-paint), "Impact", sans-serif;
+  /* Aes picked Space Grotesk Bold for all the lettering (2026-10-20): text, menu, and titles */
+  --font-sans: var(--font-space-grotesk), Arial, sans-serif;
+  --font-mono: var(--font-space-grotesk), Arial, sans-serif;
+  --font-drip: var(--font-space-grotesk), Arial, sans-serif;
   --font-round: var(--font-fredoka), "Arial Rounded MT Bold", sans-serif;
 }
 
