@@ -1,5 +1,6 @@
 /**
- * Renders the still ghost poster that shows while the 3D ghost loads, plus the share images and icons.
+ * Renders the still ghost poster that shows while the 3D ghost loads, plus the share image.
+ * The icons come from Aes's silhouette drawing instead (scripts/make-icons.mjs).
  *
  * Usage (with the site running, e.g. `npm run build && npx next start -p 3123`):
  *   node scripts/render-ghost-poster.mjs http://localhost:3123
@@ -8,7 +9,6 @@
  * Writes:
  *   public/ghost-poster.webp                            the ghost alone, cropped to its outline
  *   src/app/opengraph-image.png                         link preview, 1200×630
- *   src/app/icon.png, src/app/apple-icon.png            browser and home-screen icons
  * Re-run after Aes sends a new model (after scripts/bake-ghost-model.mjs).
  */
 
@@ -57,13 +57,4 @@ await og.waitForTimeout(300);
 await og.screenshot({ path: "src/app/opengraph-image.png", type: "png" });
 await browser.close();
 
-// Icons: the ghost centered on white
-for (const [file, size] of [["src/app/icon.png", 512], ["src/app/apple-icon.png", 180]]) {
-  const inner = Math.round(size * 0.84);
-  await sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff" } })
-    .composite([{ input: await sharp(ghost).resize({ height: inner, width: inner, fit: "contain", background: "#ffffff00" }).toBuffer(), gravity: "center" }])
-    .png()
-    .toFile(file);
-}
-
-console.log("Wrote the poster, share image, and icons.");
+console.log("Wrote the poster and share image.");

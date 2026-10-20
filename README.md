@@ -19,6 +19,8 @@ npm run lint
 | --- | --- |
 | The ghost on Home (tricks, idle moods, speech bubble, paint mode) | `src/components/GhostLanding.tsx`, `src/components/ghost/` |
 | Trick list and order | `src/components/ghost/tricks.ts` |
+| Ghost faces, and which face goes with which trick | `src/components/ghost/faces.ts`, `TRICK_FACE` in `src/components/ghost/tricks.ts` |
+| Clay or silver finish (try silver with `?finish=silver`) | `DEFAULT_FINISH` in `src/components/ghost/MiracleGhost.tsx` |
 | How many tiny ghosts the clone trick splits into | `MINI_COUNT` in `src/components/ghost/tricks.ts` (the tiny ghost model comes from `scripts/bake-mini-ghost.mjs`) |
 | Idle moods (bored, yawn, asleep) | `src/lib/useIdleMood.ts` |
 | Mini ghost on every other page | `src/components/site/MiniGhost.tsx` |
@@ -59,9 +61,12 @@ Stats: turn on Web Analytics in Vercel → Project → Analytics. Named events (
 ## Regenerating the ghost files
 
 After Aes sends a new model:
-1. `node --max-old-space-size=8192 scripts/bake-ghost-model.mjs "<path to .glb>"` rebuilds the 3D model and the face map from the 3D artist's GLB (face painted into its texture). Then run `node scripts/bake-mini-ghost.mjs` to rebuild the clone trick's tiny ghost from it.
-1. `node scripts/bake-ghost-model.mjs "<path to .obj>"` rebuilds the 3D model. Then run `node scripts/bake-mini-ghost.mjs` to rebuild the clone trick's tiny ghost from it.
-2. `npm run build && npx next start -p 3123`, then `node scripts/render-ghost-poster.mjs http://localhost:3123` rebuilds the still poster, the link preview image, and the icons. It needs Playwright (`npm i -D playwright`).
+1. `node --max-old-space-size=8192 scripts/bake-ghost-model.mjs "<path to .glb>"` rebuilds the 3D model and the Grim face map from the 3D artist's GLB (face painted into its texture). Then run `node scripts/bake-mini-ghost.mjs` to rebuild the clone trick's tiny ghost from it.
+2. `npm run build && npx next start -p 3123`, then `node scripts/render-ghost-poster.mjs http://localhost:3123` rebuilds the still poster and the link preview image. It needs Playwright (`npm i -D playwright`).
+
+`node scripts/bake-face-decal.mjs <name> "<.obj>" "<texture .png>"` bakes one of the artist's extra faces (Lilmad, Swag, Sleepy) from its OBJ and decal texture. Then add it to `src/components/ghost/faces.ts` and give it tricks in `TRICK_FACE`.
+
+`node scripts/make-icons.mjs` rebuilds the browser icons and the map pin from Aes's drawings in `scripts/art/`.
 
 ## Regenerating the world map
 
