@@ -6,7 +6,7 @@ import { FACES, IDLE_FACE, type Face } from "./faces";
  * The face is one of Aes's painted faces seen from the front (see faces.ts). Two face slots crossfade, so he can swap
  * faces between tricks without a pop.
  * On top of the clay: a wider grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
- * plus the extras a few tricks paint on: flames and soot, a groggy waking face, spiral dizzy eyes, and an electric shock.
+ * plus the extras a few tricks paint on: flames and soot, spiral dizzy eyes, and an electric shock.
  * Aes asked for no eyebrows on any face (2026-10-19). Faces painted with blush (Sleepy) get it drawn as soft spots.
  * Colors are passed as sRGB triples and written out as-is.
  * `uSilver` swaps the matte clay for a brushed silver finish (Aes asked to try it, 2026-10-19).
@@ -63,8 +63,6 @@ const fragmentShader = /* glsl */ `
     vec4 eyeR;
     // top, bottom, center x, half width
     vec4 mouth;
-    // The right eye's top and bottom ends; the left eye mirrors it
-    vec4 ends;
     float frownTop;
     // 0 for faces a frown leaves alone
     float frowns;
@@ -95,7 +93,6 @@ const fragmentShader = /* glsl */ `
   uniform float uFire;
   uniform float uFireLevel;
   uniform float uSoot;
-  uniform float uWake;
   uniform float uDizzy;
   uniform float uShock;
   uniform float uVein;
@@ -116,12 +113,6 @@ const fragmentShader = /* glsl */ `
     vec2 u = fract(p);
     u = u * u * (3.0 - 2.0 * u);
     return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), u.x), u.y);
-  }
-
-  float sdSegment(vec2 p, vec2 a, vec2 b) {
-    vec2 pa = p - a;
-    vec2 ba = b - a;
-    return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
   }
 
   float stroke(float d, float halfWidth) {
@@ -195,20 +186,11 @@ const fragmentShader = /* glsl */ `
     return stroke(line, 0.01) * (1.0 - smoothstep(radius - 0.01, radius, r)) * smoothstep(0.3, 0.6, uDizzy);
   }
 
-  // The groggy waking face: a lower lid runs out from the bottom of each eye, squeezing it into a squint
-  float wakeInk(vec2 f, vec4 ends) {
-    if (uWake <= 0.0) return 0.0;
-    vec2 m = vec2(abs(f.x), f.y);
-    vec2 bottom = ends.zw;
-    float v = sdSegment(m, bottom, bottom + vec2(0.12, 0.2) * uWake);
-    return stroke(v, 0.017) * smoothstep(0.0, 0.4, uWake);
-  }
-
   // Everything one face draws at f: (ink, white of the teeth)
   vec2 faceInk(vec2 f, sampler2D map, Face face) {
     vec2 m = mouthInk(f, map, face);
     float ink = max(m.x, max(eyeInk(f, face.eyeL, map, face.rect, face.shut), eyeInk(f, face.eyeR, map, face.rect, face.shut)));
-    ink = max(ink, max(wakeInk(f, face.ends), dizzyInk(f, face.eyeR.xy)));
+    ink = max(ink, dizzyInk(f, face.eyeR.xy));
     return vec2(ink, m.y);
   }
 
@@ -341,7 +323,6 @@ export type GhostUniforms = {
   uFire: { value: number };
   uFireLevel: { value: number };
   uSoot: { value: number };
-  uWake: { value: number };
   uDizzy: { value: number };
   uShock: { value: number };
   uVein: { value: number };
@@ -353,7 +334,6 @@ export type FaceUniform = {
   eyeL: THREE.Vector4;
   eyeR: THREE.Vector4;
   mouth: THREE.Vector4;
-  ends: THREE.Vector4;
   frownTop: number;
   frowns: number;
   shut: number;
@@ -373,7 +353,6 @@ export function faceUniform(face: Face): FaceUniform {
     eyeL: eye(0),
     eyeR: eye(1),
     mouth: new THREE.Vector4(mouth.top, mouth.bottom, mouth.cx, mouth.halfW),
-    ends: new THREE.Vector4(eyes[1].top[0], eyes[1].top[1], eyes[1].bottom[0], eyes[1].bottom[1]),
     frownTop: face.frownTop,
     frowns: face.frowns ? 1 : 0,
     shut: face.eyesShut ? 1 : 0,
@@ -406,7 +385,6 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     uFire: { value: 0 },
     uFireLevel: { value: 0 },
     uSoot: { value: 0 },
-    uWake: { value: 0 },
     uDizzy: { value: 0 },
     uShock: { value: 0 },
     uVein: { value: 0 },
