@@ -5,8 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion, type Transition } from "framer-motion";
 
 /**
- * Page changes as a coat of black spray paint: the paint drips down over the page,
- * the next page loads behind it, and the paint keeps sliding down to reveal it.
+ * Page changes as a clean black panel edged in toxic green: it slides down over the page while the
+ * next page's name rises in letter by letter, the next page loads behind it, and the panel keeps
+ * sliding down to reveal it.
+ * Aes asked for no drips on it (2026-10-20).
  * Links opt in through TransitionLink. Browser back and forward stay instant.
  */
 
@@ -16,34 +18,9 @@ const Ctx = createContext<{ navigate: (href: string, label?: string) => void } |
 
 export const useTransitionNav = () => useContext(Ctx);
 
-/** Drips along the bottom edge: [x as % of width, length in px, width in px] */
-const DRIPS: [number, number, number][] = [
-  [4, 46, 10],
-  [11, 112, 14],
-  [19, 30, 9],
-  [27, 78, 12],
-  [36, 140, 16],
-  [44, 40, 8],
-  [52, 96, 13],
-  [61, 26, 9],
-  [68, 128, 15],
-  [77, 54, 10],
-  [85, 104, 13],
-  [93, 36, 9],
-];
-
-/** Overspray specks on the top edge: [x %, y px above the edge, radius px] */
-const SPECKS: [number, number, number][] = Array.from({ length: 70 }, (_, i) => {
-  // Deterministic scatter so server and client agree
-  const a = Math.sin(i * 12.9898) * 43758.5453;
-  const b = Math.sin(i * 78.233) * 12543.123;
-  const fx = a - Math.floor(a);
-  const fy = b - Math.floor(b);
-  return [fx * 100, 4 + fy * fy * 70, 1 + ((i * 7) % 5) * 0.7];
-});
-
-const COVER: Transition = { duration: 0.5, ease: [0.65, 0, 0.35, 1] };
-const REVEAL: Transition = { duration: 0.75, ease: [0.65, 0, 0.35, 1] };
+const EASE = [0.65, 0, 0.35, 1] as const;
+const COVER: Transition = { duration: 0.55, ease: EASE };
+const REVEAL: Transition = { duration: 0.8, ease: EASE };
 /** Give up waiting for a slow page and reveal anyway */
 const MAX_WAIT_MS = 6_000;
 
@@ -54,8 +31,9 @@ function PaintCurtain({ phase, label, onCovered, onRevealed }: {
   onRevealed: () => void;
 }) {
   const reduced = useReducedMotion();
-  // Off screen above (drips and all), covering, then off screen below (specks and all)
-  const y = phase === "idle" ? "-130%" : phase === "reveal" ? "130%" : "0%";
+  // Off screen above, covering, then off screen below
+  const y = phase === "idle" ? "-100%" : phase === "reveal" ? "100%" : "0%";
+  const covering = phase === "cover" || phase === "wait";
 
   if (reduced) {
     return (
@@ -63,7 +41,7 @@ function PaintCurtain({ phase, label, onCovered, onRevealed }: {
         aria-hidden
         className="pointer-events-none fixed inset-0 z-[70] bg-foreground"
         initial={false}
-        animate={{ opacity: phase === "cover" || phase === "wait" ? 1 : 0 }}
+        animate={{ opacity: covering ? 1 : 0 }}
         transition={{ duration: 0.2 }}
         onAnimationComplete={() => (phase === "cover" ? onCovered() : phase === "reveal" ? onRevealed() : undefined)}
       />
@@ -80,25 +58,31 @@ function PaintCurtain({ phase, label, onCovered, onRevealed }: {
       onAnimationComplete={() => (phase === "cover" ? onCovered() : phase === "reveal" ? onRevealed() : undefined)}
       style={{ visibility: phase === "idle" ? "hidden" : "visible" }}
     >
-      {/* Overspray above the paint */}
-      <svg className="absolute bottom-full left-0 h-20 w-full" preserveAspectRatio="none" viewBox="0 0 100 80">
-        {SPECKS.map(([x, y, r], i) => (
-          <ellipse key={i} cx={x} cy={80 - y} rx={r * 0.12} ry={r} className="fill-foreground" />
-        ))}
-      </svg>
-      <div className="flex h-full w-full items-center justify-center bg-foreground">
-        <span className="font-drip text-[clamp(3rem,14vw,9rem)] uppercase leading-none text-background">{label}</span>
+      {/* A thin band of toxic green on both edges: it leads the panel down and trails it off */}
+      <div className="absolute inset-x-0 bottom-full h-2 bg-[var(--color-neon-green)]" />
+      <div className="flex h-full w-full items-center justify-center overflow-hidden bg-foreground">
+        {/* The page name rises in letter by letter while the panel covers, and blurs away as it slides off */}
+        <motion.span
+          className="flex font-drip text-[clamp(3rem,14vw,9rem)] uppercase leading-none text-background"
+          initial={false}
+          animate={covering ? { opacity: 1, filter: "blur(0px)" } : { opacity: 0, filter: "blur(10px)" }}
+          transition={{ duration: covering ? 0 : 0.25 }}
+        >
+          {[...label].map((ch, i) => (
+            <motion.span
+              // A fresh key on each trip, so the letters rise again even when the name is the same
+              key={`${phase === "idle" ? "off" : "on"}-${i}`}
+              className="inline-block whitespace-pre"
+              initial={{ y: "110%", opacity: 0 }}
+              animate={{ y: "0%", opacity: 1 }}
+              transition={{ duration: 0.45, delay: 0.2 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {ch}
+            </motion.span>
+          ))}
+        </motion.span>
       </div>
-      {/* Drips running ahead of the paint */}
-      <div className="absolute left-0 top-full h-40 w-full">
-        {DRIPS.map(([x, len, w], i) => (
-          <span
-            key={i}
-            className="absolute top-[-2px] rounded-b-full bg-foreground"
-            style={{ left: `${x}%`, width: w, height: len }}
-          />
-        ))}
-      </div>
+      <div className="absolute inset-x-0 top-full h-2 bg-[var(--color-neon-green)]" />
     </motion.div>
   );
 }

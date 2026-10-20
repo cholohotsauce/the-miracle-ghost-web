@@ -72,6 +72,23 @@ function SprayCan() {
  * Leave him alone and he gets bored, yawns, and falls asleep; wake him and he comes round groggy, then grumpy.
  * The spray can in the corner (or a double-tap on the empty wall) lets you spray paint on the wall.
  */
+/**
+ * The patience line's color for a poke count (Aes, 2026-10-20): toxic green from the first poke,
+ * orange once the fire ghost shows up, then on toward red, reached on the tenth poke.
+ */
+const PATIENCE_GREEN = [0x39, 0xff, 0x14]; // --color-neon-green
+const PATIENCE_ORANGE = [0xff, 0x8a, 0x00];
+const PATIENCE_RED = [0xe1, 0x0b, 0x1f]; // --color-drip-red
+const FIRE_CLICK = TRICK_ORDER.indexOf("fire") + 1;
+
+function patienceColor(clicks: number) {
+  if (clicks < FIRE_CLICK) return rgb(PATIENCE_GREEN);
+  const t = (clicks - FIRE_CLICK) / (CLICKS_PER_CYCLE - FIRE_CLICK);
+  return rgb(PATIENCE_ORANGE.map((c, i) => c + (PATIENCE_RED[i] - c) * t));
+}
+
+const rgb = (c: number[]) => `rgb(${c.map(Math.round).join(", ")})`;
+
 export default function GhostLanding() {
   const reducedMotion = useReducedMotion() ?? false;
   const entered = useEntered();
@@ -275,9 +292,7 @@ export default function GhostLanding() {
 
   // Read out to screen readers only: Aes wants no expression names under the ghost
   const caption = label ?? MOOD_LABEL[mood] ?? "";
-  // The one line on show: a nudge until the first poke of each round
-  const hint = clicks === 0 && !talking && mood === "awake" ? "Poke him" : "";
-  // His impatience: empty when you arrive, filled all the way in red on the tenth poke (Aes, 2026-10-19)
+  // His impatience: empty when you arrive, full on the tenth poke (Aes, 2026-10-19)
   const impatience = clicks / CLICKS_PER_CYCLE;
 
   return (
@@ -372,33 +387,20 @@ export default function GhostLanding() {
       </AnimatePresence>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 px-4 pb-[calc(env(safe-area-inset-bottom)+1.75rem)] md:pb-10">
-        <AnimatePresence mode="wait" initial={false}>
-          {!entered ? (
-            <motion.p
-              key="enter"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.5 }}
-              className="font-mono text-xs uppercase tracking-[0.3em] text-foreground/70"
-            >
-              Click the ghost to enter
-            </motion.p>
-          ) : (
+        {/* Only the ghost before the menu, and only the ghost, his patience and the spray can after it (Aes, 2026-10-20) */}
+        <AnimatePresence initial={false}>
+          {entered && (
             <motion.div
               key="mascot"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
-              className={`flex flex-col items-center gap-2.5 transition-opacity ${painting ? "opacity-0" : ""}`}
+              className={`flex flex-col items-center transition-opacity ${painting ? "opacity-0" : ""}`}
             >
               <p aria-live="polite" className="sr-only">
                 {painting ? "" : caption}
               </p>
-              <p aria-hidden className="h-4 font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60">
-                {painting ? "" : hint}
-              </p>
-              {/* His patience, with no words: red fills the line with every poke and he snaps when it's full */}
+              {/* His patience, with no words: the line fills with every poke and he snaps when it's full */}
               <motion.div
                 role="meter"
                 aria-label="The ghost's patience"
@@ -412,9 +414,9 @@ export default function GhostLanding() {
               >
                 <motion.div
                   initial={false}
-                  animate={{ scaleX: impatience }}
-                  transition={{ type: "spring", stiffness: 260, damping: 24 }}
-                  className="h-full w-full origin-left rounded-full bg-[var(--color-drip-red)]"
+                  animate={{ scaleX: impatience, backgroundColor: patienceColor(clicks) }}
+                  transition={{ scaleX: { type: "spring", stiffness: 260, damping: 24 }, backgroundColor: { duration: 0.4 } }}
+                  className="h-full w-full origin-left rounded-full"
                 />
               </motion.div>
             </motion.div>

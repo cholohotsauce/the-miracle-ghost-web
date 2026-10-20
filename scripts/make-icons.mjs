@@ -1,7 +1,8 @@
 /**
  * Builds the small images made from Aes's own drawings in scripts/art/:
  *   public/sightings/ghost-pin-body.png  the map pin's body mask (white = inside), from original-ghost-dropless.png
- *   public/sightings/ghost-pin-ink.png   the map pin's black linework
+ *   public/sightings/ghost-pin-ink.png   the map pin's black outline, without the face (Aes, 2026-10-20)
+ *   public/sightings/ghost-pin-ink-face.png  the same outline with his eyes and smile, for ?map=classic
  *   src/app/icon.png, src/app/apple-icon.png  the browser and home-screen icons, from ghost-silhouette.png
  *
  * Usage: node scripts/make-icons.mjs
@@ -39,6 +40,39 @@ function dilate(alpha, width, height, r) {
   return src;
 }
 
+/** Keeps the largest 8-connected group of set pixels and clears the rest */
+function largestPiece(mask, width, height) {
+  const group = new Int32Array(mask.length).fill(-1);
+  let best = -1;
+  let bestSize = 0;
+  for (let start = 0, id = 0; start < mask.length; start++) {
+    if (!mask[start] || group[start] >= 0) continue;
+    const stack = [start];
+    group[start] = id;
+    let size = 0;
+    while (stack.length) {
+      const i = stack.pop();
+      size++;
+      const x = i % width;
+      const y = (i - x) / width;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const n = ny * width + nx;
+          if (nx >= 0 && ny >= 0 && nx < width && ny < height && mask[n] && group[n] < 0) {
+            group[n] = id;
+            stack.push(n);
+          }
+        }
+      }
+    }
+    if (size > bestSize) [best, bestSize] = [id, size];
+    id++;
+  }
+  return mask.map((v, i) => (group[i] === best ? v : 0));
+}
+
 // Map pin: the drawing is black lines on a white body over a transparent background
 {
   const { data, info } = await sharp(PIN_SRC)
@@ -57,11 +91,17 @@ function dilate(alpha, width, height, r) {
     // Solid black wherever there is a fair bit of line, so the thin strokes stay dark once the pin is small
     lines[i] = a * (1 - lum) > 0.25 ? 255 : 0;
   }
-  const grown = dilate(lines, width, height, PIN_INK_GROW);
-  const ink = Buffer.alloc(width * height * 4);
-  for (let i = 0; i < width * height; i++) ink[i * 4 + 3] = grown[i];
+  // The faceless pin keeps only the outline: the biggest connected run of line. The eyes and smile are separate strokes.
+  const outline = largestPiece(lines, width, height);
+  const writeInk = async (src, file) => {
+    const grown = dilate(src, width, height, PIN_INK_GROW);
+    const ink = Buffer.alloc(width * height * 4);
+    for (let i = 0; i < width * height; i++) ink[i * 4 + 3] = grown[i];
+    await sharp(ink, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 9 }).toFile(file);
+  };
   await sharp(body, { raw: { width, height, channels: 3 } }).png({ compressionLevel: 9 }).toFile("public/sightings/ghost-pin-body.png");
-  await sharp(ink, { raw: { width, height, channels: 4 } }).png({ compressionLevel: 9 }).toFile("public/sightings/ghost-pin-ink.png");
+  await writeInk(outline, "public/sightings/ghost-pin-ink.png");
+  await writeInk(lines, "public/sightings/ghost-pin-ink-face.png");
   console.log(`Pin: ${width}×${height} (aspect ${(width / height).toFixed(4)})`);
 }
 
