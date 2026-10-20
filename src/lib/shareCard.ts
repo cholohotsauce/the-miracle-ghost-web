@@ -2,6 +2,7 @@
 
 import { POSTER_URL } from "@/components/ghost/GhostPoster";
 import { GHOST_QUESTION, GHOST_SENT } from "./ghostMessage";
+import { INSTAGRAM_HANDLE } from "./site";
 
 /** Instagram story-friendly portrait card */
 const W = 1080;
@@ -121,7 +122,8 @@ export async function drawInsultCard(): Promise<Blob> {
   ctx.fillText("THE MIRACLE GHOST TOLD ME OFF", W / 2, H - 125);
   ctx.font = "600 28px ui-monospace, monospace";
   ctx.fillStyle = "#39ff14";
-  ctx.fillText(location.host.toUpperCase(), W / 2, H - 52);
+  // His handle, so every shared card leads back to him
+  ctx.fillText(`@${INSTAGRAM_HANDLE.toUpperCase()}  ·  ${location.host.toUpperCase()}`, W / 2, H - 52);
 
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png"));
 }
