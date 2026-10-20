@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
+import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -19,6 +20,21 @@ export default function ContactPage() {
           </h1>
           <p className="mt-6 max-w-md text-lg leading-relaxed md:text-xl">
             For commissions, collaborations, and press inquiries, please get in touch using the form.
+          </p>
+          <p className="mt-10">
+            <span className="block font-mono text-xs uppercase tracking-[0.3em] text-foreground/60 md:text-sm">Or DM the ghost</span>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="group relative mt-2 inline-block font-drip text-[clamp(2rem,9vw,3.75rem)] uppercase leading-none lg:text-[min(3.5vw,3.75rem)]"
+            >
+              @{INSTAGRAM_HANDLE}
+              <span
+                aria-hidden
+                className="absolute -bottom-1.5 left-0 right-0 h-1.5 origin-left scale-x-100 bg-[var(--color-neon-green)] transition-transform duration-300 group-hover:scale-x-110"
+              />
+            </a>
           </p>
         </header>
         <ContactForm />

@@ -11,6 +11,10 @@ export const SITE_URL = (
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "The Miracle Ghost";
+
+/** Aes's Instagram handle, without the @. Shown on Contact, under the Shows map, and on the "told me off" card. */
+export const INSTAGRAM_HANDLE = "themiracleghost";
+export const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
 export const SITE_DESCRIPTION =
   "The Miracle Ghost: the street artist Aes, out of Miami. Original paintings, drops, shows, and a ghost with an attitude.";
 
@@ -22,6 +26,7 @@ export const artistJsonLd = {
   alternateName: "Aes",
   jobTitle: "Artist",
   url: SITE_URL,
+  sameAs: [INSTAGRAM_URL],
   homeLocation: { "@type": "Place", name: "Miami, Florida" },
 };
 
