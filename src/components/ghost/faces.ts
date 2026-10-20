@@ -1,4 +1,5 @@
 import lilmad from "./faceBakes/lilmad.json";
+import sleepy from "./faceBakes/sleepy.json";
 import swag from "./faceBakes/swag.json";
 import { EYES, FACE_MAP_URL, FACE_RECT, MOUTH } from "./modelBake";
 
@@ -7,13 +8,15 @@ import { EYES, FACE_MAP_URL, FACE_RECT, MOUTH } from "./modelBake";
  * a map (R = eyes, G = mouth ink, B = white teeth) and where its eyes and mouth sit in model XY.
  * The shader draws the grin, frown, lids and blinks from these landmarks, so every trick works with every face.
  *
- * To add a face (Sleepy next): bake its map with scripts/bake-face-decal.mjs, add an entry here, and give it tricks
+ * To add a face: bake its map with scripts/bake-face-decal.mjs, add an entry here, and give it tricks
  * in TRICK_FACE (tricks.ts).
  */
 
-export type FaceName = "original" | "grim" | "lilmad" | "swag";
+export type FaceName = "original" | "grim" | "lilmad" | "swag" | "sleepy";
 
 type Rect = { minX: number; maxX: number; minY: number; maxY: number };
+/** A soft painted spot: its center, the half size of its solid core, and how far its blur runs past the core */
+type Spot = { cx: number; cy: number; rx: number; ry: number; blur: number };
 type Eye = { cx: number; cy: number; halfW: number; halfH: number; top: readonly number[]; bottom: readonly number[] };
 
 export type Face = {
@@ -28,6 +31,10 @@ export type Face = {
   frownTop: number;
   /** False for faces already drawn mad or smug: a trick's frown would flip them into a smile, so it leaves them be */
   frowns: boolean;
+  /** True for faces painted with their eyes already shut: lids and blinks leave them be */
+  eyesShut?: boolean;
+  /** Painted blush: its sRGB color and the left and right cheek */
+  cheeks?: { color: readonly number[]; spots: readonly Spot[] };
 };
 
 export const FACES: Record<FaceName, Face> = {
@@ -60,6 +67,8 @@ export const FACES: Record<FaceName, Face> = {
   lilmad: { ...lilmad, frownTop: lilmad.mouth.top, frowns: false },
   // The 3D artist's Swag Ghost ("Hustler" in Aes's list): black V brows over a tall toothy grin
   swag: { ...swag, frownTop: swag.mouth.top, frowns: false },
+  // The 3D artist's Sleepy Ghost: closed curved eyes, pink cheeks, and a droopy mouth with a drip of drool
+  sleepy: { ...sleepy, frownTop: sleepy.mouth.top, frowns: false, eyesShut: true },
 };
 
 export const FACE_NAMES = Object.keys(FACES) as FaceName[];

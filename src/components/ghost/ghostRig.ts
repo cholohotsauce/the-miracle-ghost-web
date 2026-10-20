@@ -190,7 +190,6 @@ export class GhostRig {
     uni.uFire.value = p.fire;
     uni.uFireLevel.value = p.fireLevel;
     uni.uSoot.value = p.soot;
-    uni.uWake.value = p.wake;
     uni.uDizzy.value = p.dizzy;
     uni.uShock.value = p.shock;
     uni.uVein.value = p.vein;

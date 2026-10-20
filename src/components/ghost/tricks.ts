@@ -59,8 +59,6 @@ export type Pose = {
   fireLevel: number;
   soot: number;
   smoke: number;
-  /** The groggy waking face's squinting V eyes */
-  wake: number;
   /** Spinning spiral eyes after the tornado */
   dizzy: number;
   /** The clone trick's tiny ghosts: how far they have scattered (0 is packed into his shape) and how big they are (0 is gone) */
@@ -93,7 +91,6 @@ export const REST: Readonly<Pose> = {
   fireLevel: 0,
   soot: 0,
   smoke: 0,
-  wake: 0,
   dizzy: 0,
   split: 0,
   minis: 0,
@@ -147,8 +144,9 @@ export const TRICK_FACE: Record<TrickName, FaceName> = {
   "annoyed shake": "grim",
   "grin pop": "grim",
   bored: "original",
-  yawn: "original",
-  sleep: "original",
+  // Drowsy and asleep he wears the Sleepy face, painted with his eyes already shut
+  yawn: "sleepy",
+  sleep: "sleepy",
   waking: "original",
   grumpy: "original",
 };
@@ -442,8 +440,6 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
     }
     case "waking": {
       // Poked awake: eyes crack open into a squint, he sags back once, then drags himself upright
-      const e = envelope(u, 0.35, 0.45, d);
-      out.wake = e;
       const sag = Math.max(0, Math.sin(Math.PI * clamp01((u - 0.8) / 0.7)));
       out.lid = 1.15 - 0.65 * smooth(u / 0.6) + 0.3 * sag;
       const up = smooth(u / 1.8);

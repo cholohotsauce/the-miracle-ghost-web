@@ -4,7 +4,8 @@
 //
 // Writes:
 //   public/models/miracle-ghost-face-<name>.png    the face seen from the front (R = eyes, G = mouth ink, B = white teeth)
-//   src/components/ghost/faceBakes/<name>.json     where that map sits in model XY, and its eye and mouth landmarks
+//   src/components/ghost/faceBakes/<name>.json     where that map sits in model XY, and its eye and mouth landmarks,
+//                                                  and any painted blush on its cheeks
 //
 // Usage: node scripts/bake-face-decal.mjs <name> "<path to .obj>" "<path to texture .png>"
 // Then add the face to src/components/ghost/faces.ts and give it tricks in TRICK_FACE (tricks.ts).
@@ -230,11 +231,58 @@ const eyes = [
 const mouthMarks = real.filter((m) => !eyeIds.has(m.id));
 const [mLeft, mTop] = pxToFace(Math.min(...mouthMarks.map((m) => m.minX)), Math.min(...mouthMarks.map((m) => m.minY)));
 const [mRight, mBottom] = pxToFace(Math.max(...mouthMarks.map((m) => m.maxX)), Math.max(...mouthMarks.map((m) => m.maxY)));
+// 6. Painted blush (Sleepy's pink cheeks): soft colored spots the grey map can't hold, so they become landmarks
+// the shader paints itself. Blush is where red runs well ahead of green; the body grey has them about equal.
+const { data: rgb } = await sharp(texPath).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+const redness = (k) => rgb[k * 3] - rgb[k * 3 + 1];
+let peak = 0;
+for (let k = 0; k < TW * TH; k++) peak = Math.max(peak, redness(k));
+let cheeks;
+if (peak > 40) {
+  const sides = [-1, 1].map(() => ({ half: { min: [Infinity, Infinity], max: [-Infinity, -Infinity] }, faint: { min: [Infinity, Infinity], max: [-Infinity, -Infinity] }, color: [0, 0, 0], n: 0 }));
+  const grow = (b, p) => {
+    b.min = [Math.min(b.min[0], p[0]), Math.min(b.min[1], p[1])];
+    b.max = [Math.max(b.max[0], p[0]), Math.max(b.max[1], p[1])];
+  };
+  for (let py = 0; py < TH; py++) {
+    for (let px = 0; px < TW; px++) {
+      const k = py * TW + px;
+      const w = redness(k) / peak;
+      if (w < 0.08) continue;
+      const p = toModel(px, py);
+      const s = sides[p[0] < cx ? 0 : 1];
+      grow(s.faint, p);
+      if (w >= 0.5) grow(s.half, p);
+      if (w >= 0.9) {
+        for (let c = 0; c < 3; c++) s.color[c] += rgb[k * 3 + c];
+        s.n++;
+      }
+    }
+  }
+  if (sides.every((s) => s.n > 0)) {
+    // Each cheek: its center, the half size of its solid core, and how far the blur runs past the core (as a fraction)
+    const spots = sides.map(({ half, faint }) => {
+      const r = [(half.max[0] - half.min[0]) / 2, (half.max[1] - half.min[1]) / 2];
+      return {
+        cx: round((half.min[0] + half.max[0]) / 2),
+        cy: round((half.min[1] + half.max[1]) / 2),
+        rx: round(r[0]),
+        ry: round(r[1]),
+        blur: round(((faint.max[0] - faint.min[0]) / 2 / r[0] - 1) / 2),
+      };
+    });
+    const n = sides[0].n + sides[1].n;
+    const color = [0, 1, 2].map((c) => round((sides[0].color[c] + sides[1].color[c]) / n / 255));
+    cheeks = { color, spots };
+  }
+}
+
 const bake = {
   map: `/models/${mapFile}`,
   rect: { minX: round(rect.minX), maxX: round(rect.maxX), minY: round(rect.minY), maxY: round(rect.maxY) },
   eyes,
   mouth: { top: round(mTop), bottom: round(mBottom), cx: round((mLeft + mRight) / 2), halfW: round((mRight - mLeft) / 2) },
+  ...(cheeks && { cheeks }),
 };
 fs.mkdirSync(path.join(ROOT, "src/components/ghost/faceBakes"), { recursive: true });
 fs.writeFileSync(path.join(ROOT, "src/components/ghost/faceBakes", `${name}.json`), JSON.stringify(bake, null, 2) + "\n");
