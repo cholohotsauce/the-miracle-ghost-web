@@ -69,7 +69,7 @@ function SprayCan() {
  * Aes's landing: a white page with only his ghost.
  * Click 1 enters (grin + menu). Clicks 1–9 after that play tricks while his patience bar runs down.
  * Click 10 opens the speech bubble.
- * Leave him alone and he gets bored, yawns, and falls asleep; wake him and he comes round groggy, then grumpy.
+ * Leave him alone and he gets bored, yawns, and falls asleep; wake him and he opens his eyes, back to his old self.
  * The spray can in the corner (or a double-tap on the empty wall) lets you spray paint on the wall.
  */
 /**
@@ -214,11 +214,11 @@ export default function GhostLanding() {
 
   const poke = useCallback(() => {
     if (talking || painting) return;
-    // A sleeping ghost comes round groggy, then turns grumpy, and that poke doesn't count
+    // A sleeping ghost wakes up, and that poke doesn't count
     if (wake() === "asleep" && entered) {
       say("huh…?");
       play("waking");
-      labelTimer.current = window.setTimeout(() => setLabel("grumpy"), TRICK_DURATION.waking * 1000);
+      labelTimer.current = window.setTimeout(() => setLabel(null), TRICK_DURATION.waking * 1000);
       track("ghost_woke_up");
       return;
     }

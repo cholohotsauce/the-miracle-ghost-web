@@ -7,10 +7,14 @@ import { FACES, IDLE_FACE, type Face } from "./faces";
  * faces between tricks without a pop.
  * On top of the clay: a wider grin, a frown, lowered lids, blinks, and a neon glow for the "neon" trick,
  * plus the extras a few tricks paint on: flames and soot, spiral dizzy eyes, and an electric shock.
+ * The fed-up anger vein floats beside him, so it is drawn on the fire plane behind him (createFireMaterial).
  * Aes asked for no eyebrows on any face (2026-10-19). Faces painted with blush (Sleepy) get it drawn as soft spots.
  * Colors are passed as sRGB triples and written out as-is.
  * `uSilver` swaps the matte clay for a brushed silver finish (Aes asked to try it, 2026-10-19).
  */
+
+/** The anger vein beside his head, in model XY: its center and half size */
+const VEIN = { x: "0.5", y: "1.36", size: "0.17" };
 
 /** How far a full grin widens and lengthens the painted mouth */
 const GRIN_WIDEN = 0.3;
@@ -66,6 +70,8 @@ const fragmentShader = /* glsl */ `
     float frownTop;
     // 0 for faces a frown leaves alone
     float frowns;
+    // 0 for faces whose grin never stretches
+    float stretch;
     // 1 for faces painted with their eyes shut: no lids or blinks
     float shut;
     // Blush: left and right cheek (center, half size), how far the blur runs past the core, and its color (0 for none)
@@ -89,13 +95,13 @@ const fragmentShader = /* glsl */ `
   // 0 shows face A, 1 face B
   uniform float uFaceMix;
   uniform float uMouthY;
+  uniform float uFrownLift;
   uniform float uSilver;
   uniform float uFire;
   uniform float uFireLevel;
   uniform float uSoot;
   uniform float uDizzy;
   uniform float uShock;
-  uniform float uVein;
   uniform float uTime;
 
   varying vec3 vNormal;
@@ -149,24 +155,24 @@ const fragmentShader = /* glsl */ `
   }
 
   // The face point f in the painted mouth's own space, undoing the grin's stretch (it hangs from the corners)
-  vec2 mouthSpace(vec2 f, vec4 mouth) {
+  vec2 mouthSpace(vec2 f, vec4 mouth, float grin) {
     float top = mouth.x;
-    return vec2(mouth.z + (f.x - mouth.z) / (1.0 + ${GRIN_WIDEN.toFixed(3)} * uGrin), top + (f.y - top) / (1.0 + ${GRIN_LENGTHEN.toFixed(3)} * uGrin));
+    return vec2(mouth.z + (f.x - mouth.z) / (1.0 + ${GRIN_WIDEN.toFixed(3)} * grin), top + (f.y - top) / (1.0 + ${GRIN_LENGTHEN.toFixed(3)} * grin));
   }
 
-  // The mouth turned upside down for a frown, its point reaching up to frownTop
+  // The mouth turned upside down for a frown, its point reaching up to frownTop and its corners lifted by uFrownLift
   vec2 frownSpace(vec2 p, vec4 mouth, float point) {
     float top = mouth.x;
     float bottom = mouth.y;
-    return vec2(p.x, bottom + (point - p.y) * (top - bottom) / (point - bottom));
+    return vec2(p.x, bottom + (point - p.y) * (top - bottom) / (point - bottom - uFrownLift));
   }
 
   // The painted mouth: widens and lengthens with uGrin, or flips into a frown (open, it is a scream).
-  // Returns (ink, white of the teeth).
+  // On faces that don't stretch, only the scream widens. Returns (ink, white of the teeth).
   vec2 mouthInk(vec2 f, sampler2D map, Face face) {
-    vec2 p = mouthSpace(f - vec2(0.0, uMouthY), face.mouth);
     // A quick crossfade, so the grin and frown never sit on the face together for long
     float flip = smoothstep(0.3, 0.7, uFrown) * face.frowns;
+    vec2 p = mouthSpace(f - vec2(0.0, uMouthY), face.mouth, uGrin * max(face.stretch, step(0.5, flip)));
     vec2 a = texture2D(map, faceUv(p, face.rect)).gb;
     vec2 b = flip > 0.0 ? texture2D(map, faceUv(frownSpace(p, face.mouth, face.frownTop), face.rect)).gb : vec2(0.0);
     return mix(a, b, flip);
@@ -205,18 +211,6 @@ const fragmentShader = /* glsl */ `
     if (face.cheekL.z <= 0.0) return vec4(0.0);
     float a = max(spot(f, face.cheekL, face.cheekBlur), spot(f, face.cheekR, face.cheekBlur));
     return vec4(face.cheekColor * a, a);
-  }
-
-  // The cartoon anger vein: four arcs around a point high on his forehead, above the right eye, each bowed
-  // toward the middle. A stand-in until Aes sends his own vein drawing.
-  float veinInk(vec2 f) {
-    if (uVein <= 0.0) return 0.0;
-    float size = 0.095 * (0.9 + 0.1 * uVein);
-    vec2 m = abs(f - vec2(0.14, 1.3)) / size;
-    if (max(m.x, m.y) > 1.2) return 0.0;
-    float arc = abs(length(m - vec2(1.0)) - 0.78);
-    float inside = step(0.18, min(m.x, m.y)) * step(max(m.x, m.y), 1.0);
-    return (1.0 - smoothstep(0.13, 0.2, arc)) * inside * smoothstep(0.0, 0.3, uVein);
   }
 
   // A soft studio seen in a metal surface: bright overhead, a dark band at the horizon, a grey floor
@@ -274,10 +268,16 @@ const fragmentShader = /* glsl */ `
       color = mix(color, flame * (0.85 + 0.25 * wrap), burn * 0.7);
     }
 
-    // Electrocuted: he flickers jet black, like a cartoon zap
+    // Electrocuted: he flickers jet black, like a cartoon zap, with current crawling over him in bright jagged lines
     if (uShock > 0.0) {
       float flicker = 0.8 + 0.2 * step(0.0, sin(uTime * 70.0));
       color = mix(color, vec3(0.02) + vec3(0.9, 0.8, 0.1) * fresnel * 0.6, uShock * flicker);
+      float tick = floor(uTime * 18.0);
+      float n = noise(vShape * 2.8 + tick * 5.31) + 0.4 * noise(vShape * 9.5 - tick * 2.17);
+      float d = abs(n - 0.72);
+      float current = 1.0 - smoothstep(0.012, 0.035, d);
+      color += vec3(1.0, 0.8, 0.1) * exp(-d * 26.0) * 0.45 * uShock;
+      color = mix(color, vec3(1.0, 0.97, 0.7), current * uShock);
     }
 
     // Face: Aes's painted eyes and smile, in ink, plus whatever the trick adds
@@ -296,7 +296,6 @@ const fragmentShader = /* glsl */ `
       // Ink turns white on a glowing or blacked-out body
       vec3 inkColor = mix(vec3(0.05), vec3(1.0), max(uGlow * 0.9, uShock));
       color = mix(color, inkColor, ink);
-      color = mix(color, vec3(0.86, 0.04, 0.1), veinInk(f) * vFront);
     }
 
     gl_FragColor = vec4(color, 1.0);
@@ -319,13 +318,13 @@ export type GhostUniforms = {
   uFaceB: { value: FaceUniform };
   uFaceMix: { value: number };
   uMouthY: { value: number };
+  uFrownLift: { value: number };
   uSilver: { value: number };
   uFire: { value: number };
   uFireLevel: { value: number };
   uSoot: { value: number };
   uDizzy: { value: number };
   uShock: { value: number };
-  uVein: { value: number };
 };
 
 /** A face's landmarks in the shape of the shader's Face struct */
@@ -336,6 +335,7 @@ export type FaceUniform = {
   mouth: THREE.Vector4;
   frownTop: number;
   frowns: number;
+  stretch: number;
   shut: number;
   cheekL: THREE.Vector4;
   cheekR: THREE.Vector4;
@@ -355,6 +355,7 @@ export function faceUniform(face: Face): FaceUniform {
     mouth: new THREE.Vector4(mouth.top, mouth.bottom, mouth.cx, mouth.halfW),
     frownTop: face.frownTop,
     frowns: face.frowns ? 1 : 0,
+    stretch: face.stretches === false ? 0 : 1,
     shut: face.eyesShut ? 1 : 0,
     cheekL: cheek(0),
     cheekR: cheek(1),
@@ -381,13 +382,13 @@ export function createGhostMaterial(faceMap: THREE.Texture) {
     uFaceB: { value: faceUniform(FACES[IDLE_FACE]) },
     uFaceMix: { value: 0 },
     uMouthY: { value: 0 },
+    uFrownLift: { value: 0 },
     uSilver: { value: 0 },
     uFire: { value: 0 },
     uFireLevel: { value: 0 },
     uSoot: { value: 0 },
     uDizzy: { value: 0 },
     uShock: { value: 0 },
-    uVein: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,
@@ -445,6 +446,7 @@ const fireFragment = /* glsl */ `
   uniform float uLevel;
   uniform float uSmoke;
   uniform float uZap;
+  uniform float uVein;
   varying vec2 vUv;
 
   float hash(vec2 p) {
@@ -469,6 +471,19 @@ const fireFragment = /* glsl */ `
   // The ghost's soft silhouette, from the halo map
   float body(vec2 p) {
     return texture2D(uMap, (p - uMapRect.xy) / uMapRect.zw).a / 0.85;
+  }
+
+  // The cartoon anger vein: four arcs around a point, each bowed toward the middle. It floats in the air off his
+  // upper right, just off the top of his head, clear of his body (Aes, 2026-10-22).
+  // A stand-in until Aes sends his own vein drawing.
+  float veinInk(vec2 p) {
+    if (uVein <= 0.0) return 0.0;
+    float size = ${VEIN.size} * (0.9 + 0.1 * uVein);
+    vec2 m = abs(p - vec2(${VEIN.x}, ${VEIN.y})) / size;
+    if (max(m.x, m.y) > 1.2) return 0.0;
+    float arc = abs(length(m - vec2(1.0)) - 0.78);
+    float inside = step(0.18, min(m.x, m.y)) * step(max(m.x, m.y), 1.0);
+    return (1.0 - smoothstep(0.13, 0.2, arc)) * inside * smoothstep(0.0, 0.3, uVein);
   }
 
   void main() {
@@ -513,22 +528,57 @@ const fireFragment = /* glsl */ `
     }
 
     if (uZap > 0.0) {
-      // Electric arcs: jagged yellow lines crackling just outside his outline, jumping to a new shape 20 times a second
+      // Electricity (Aes asked for more, 2026-10-22): two layers of jagged arcs crackling along his outline, and
+      // forked bolts jumping off him in every direction. All of it glows and jumps to a new shape many times a second.
       float b = body(p);
-      float band = smoothstep(0.05, 0.3, b) * (1.0 - smoothstep(0.6, 0.9, b));
+      float band = smoothstep(0.02, 0.22, b) * (1.0 - smoothstep(0.75, 0.95, b));
       float tick = floor(uTime * 20.0);
-      float n = noise(p * 2.6 + tick * 7.13) + 0.35 * noise(p * 9.0 - tick * 3.1);
-      float line = 1.0 - smoothstep(0.02, 0.06, abs(n - 0.68));
-      float a = line * band * uZap;
-      vec3 col = mix(vec3(1.0, 0.85, 0.0), vec3(1.0, 1.0, 0.75), smoothstep(0.6, 1.0, line));
+      float d1 = abs(noise(p * 2.6 + tick * 7.13) + 0.35 * noise(p * 9.0 - tick * 3.1) - 0.68);
+      float d2 = abs(noise(p * 4.3 - tick * 5.71) + 0.3 * noise(p * 15.0 + tick * 2.33) - 0.7);
+      float core = max(1.0 - smoothstep(0.015, 0.045, d1), 0.8 * (1.0 - smoothstep(0.01, 0.03, d2))) * band;
+      float glow = (exp(-d1 * 20.0) + 0.6 * exp(-d2 * 28.0)) * band;
+
+      // Bolts shoot straight out from his middle (the part over his body hides behind him), zigzagging as they go
+      vec2 q = p - vec2(0.0, 0.1);
+      float ang = atan(q.y, q.x);
+      float rad = length(q);
+      float flash = floor(uTime * 12.0);
+      for (int i = 0; i < 8; i++) {
+        float fi = float(i);
+        // Each bolt shows on about two flashes in three
+        if (hash(vec2(fi + 9.0, flash)) < 0.35) continue;
+        float a0 = hash(vec2(fi, flash)) * 6.2832;
+        float off = atan(sin(ang - a0), cos(ang - a0)) * rad;
+        float jag = (noise(vec2(rad * 6.0, fi * 3.1 + flash)) - 0.5) * 0.36 + (noise(vec2(rad * 18.0, fi + flash * 1.7)) - 0.5) * 0.1;
+        float len = 1.9 + 0.8 * hash(vec2(flash, fi + 4.0));
+        float reach = smoothstep(len, len - 0.5, rad);
+        float d = abs(off - jag);
+        // A short fork off each bolt, two thirds of the way out
+        float fork = abs(off - jag - (rad - len * 0.62) * 0.7 * sign(hash(vec2(fi, flash + 2.0)) - 0.5));
+        float forkReach = step(len * 0.62, rad) * smoothstep(len * 0.95, len * 0.8, rad);
+        core = max(core, (1.0 - smoothstep(0.012, 0.03, d)) * reach);
+        core = max(core, 0.8 * (1.0 - smoothstep(0.01, 0.025, fork)) * forkReach);
+        glow = max(glow, exp(-d * 16.0) * reach);
+      }
+      // Fade out before the plane's edges so no bolt is ever cut off
+      vec2 edge = smoothstep(0.0, 0.08, vUv) * smoothstep(0.0, 0.08, 1.0 - vUv);
+      float fade = edge.x * edge.y * uZap;
+      core *= fade;
+      glow *= fade;
+      // A white-hot core in an amber glow, so it reads on the white page
+      float a = max(core, 0.6 * glow);
+      vec3 col = mix(vec3(1.0, 0.72, 0.0), vec3(1.0, 0.96, 0.55), core);
       outColor = vec4(mix(outColor.rgb, col, a), max(outColor.a, a));
     }
+
+    float vein = veinInk(p);
+    if (vein > 0.0) outColor = vec4(mix(outColor.rgb, vec3(0.86, 0.04, 0.1), vein), max(outColor.a, vein));
 
     gl_FragColor = outColor;
   }
 `;
 
-/** The flames and smoke for the "fire" trick (and the sparks for "zapped"), drawn on a plane behind the ghost so they lick out around him */
+/** The flames and smoke for the "fire" trick (and the sparks for "zapped", and the fed-up vein), drawn on a plane behind the ghost so they lick out around him */
 export function createFireMaterial(map: THREE.Texture, mapRect: THREE.Vector4, plane: THREE.Vector4) {
   const uniforms = {
     uMap: { value: map },
@@ -539,6 +589,7 @@ export function createFireMaterial(map: THREE.Texture, mapRect: THREE.Vector4, p
     uLevel: { value: 0 },
     uSmoke: { value: 0 },
     uZap: { value: 0 },
+    uVein: { value: 0 },
   };
   const material = new THREE.ShaderMaterial({
     uniforms,

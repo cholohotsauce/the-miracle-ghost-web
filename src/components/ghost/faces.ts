@@ -31,6 +31,8 @@ export type Face = {
   frownTop: number;
   /** False for faces already drawn mad or smug: a trick's frown would flip them into a smile, so it leaves them be */
   frowns: boolean;
+  /** False for faces whose grin stays exactly as painted: a trick's grin never widens or lengthens it */
+  stretches?: boolean;
   /** True for faces painted with their eyes already shut: lids and blinks leave them be */
   eyesShut?: boolean;
   /** Painted blush: its sRGB color and the left and right cheek */
@@ -61,6 +63,8 @@ export const FACES: Record<FaceName, Face> = {
     // The long grin is squeezed in below the eyes so its point stays clear of them
     frownTop: EYES[1].bottom[1] - 0.08,
     frowns: true,
+    // Aes wants his grin kept as drawn, never stretched wider (2026-10-22). That covers the welcome grin too.
+    stretches: false,
   },
   // The 3D artist's Lilmad and Swag faces, baked by scripts/bake-face-decal.mjs.
   // Lilmad Ghost: straight V eyes over an upside-down toothy frown

@@ -8,8 +8,7 @@ import {
   poseAt,
   REST,
   TRICK_DURATION,
-  TRICK_FACE,
-  TRICK_NEXT,
+  trickFace,
   type Pose,
   type TrickName,
 } from "./tricks";
@@ -39,7 +38,8 @@ const MINI_STAGGER = 0.35;
 
 /**
  * Each tiny ghost of the clone trick. They spread evenly (a sunflower pattern) over an oval the size of his body,
- * so together they make up his shape, and fly straight out from there to the same angle on an oval that fills the page.
+ * so together they make up his shape, and fly straight out from there, at about the same angle, to a spot
+ * anywhere on the page, corners included (Aes, 2026-10-22).
  */
 const MINIS = Array.from({ length: MINI_COUNT }, (_, i) => {
   const r = Math.sqrt((i + 0.5) / MINI_COUNT);
@@ -51,7 +51,7 @@ const MINIS = Array.from({ length: MINI_COUNT }, (_, i) => {
   };
   return {
     home: { x: 1.0 * r * Math.cos(a), y: 0.05 + 1.3 * r * Math.sin(a) },
-    out: { r: 0.12 + 0.88 * Math.sqrt(rand(1)), a: a + (rand(2) - 0.5) * 0.4 },
+    out: { r: 0.1 + 0.9 * Math.sqrt(rand(1)), a: a + (rand(2) - 0.5) * 0.4 },
     delay: rand(3) * MINI_STAGGER,
     size: 0.85 + 0.3 * rand(4),
     phase: rand(5) * Math.PI * 2,
@@ -124,19 +124,12 @@ export class GhostRig {
       this.from = { ...this.pose };
       this.trick = { name: c.trick.name, seq: c.trick.seq, start: t };
     }
-    // Some tricks roll into another (waking up turns grumpy)
-    const ended = this.trick.name;
-    const next = ended && TRICK_NEXT[ended];
-    if (next && t - this.trick.start >= TRICK_DURATION[ended]) {
-      this.from = { ...this.pose };
-      this.trick = { name: next, seq: this.trick.seq, start: t };
-    }
     const u = t - this.trick.start;
     const name = this.trick.name;
     const playing = name && u < TRICK_DURATION[name] ? name : null;
     if (playing) poseAt(playing, u, c.reducedMotion, this.target);
     else Object.assign(this.target, REST);
-    this.fadeFace(playing ? TRICK_FACE[playing] : IDLE_FACE, step);
+    this.fadeFace(playing ? trickFace(playing, u) : IDLE_FACE, step);
     const k = THREE.MathUtils.smoothstep(u / BLEND_IN, 0, 1);
     const p = blendPose(this.from, this.target, k, this.pose);
 
@@ -184,6 +177,7 @@ export class GhostRig {
     uni.uFrown.value = p.frown;
     uni.uLid.value = p.lid;
     uni.uMouthY.value = p.mouthY;
+    uni.uFrownLift.value = p.frownLift;
     uni.uBlink.value = Math.max(blinkScale * (1 - p.lid * 0.3), 0.08);
     uni.uGlow.value = p.glow;
     uni.uGlowColor.value.copy(this.glowColor);
@@ -192,7 +186,6 @@ export class GhostRig {
     uni.uSoot.value = p.soot;
     uni.uDizzy.value = p.dizzy;
     uni.uShock.value = p.shock;
-    uni.uVein.value = p.vein;
     // The halo glows in the neon colors, or yellow while he is being zapped
     halo.uniforms.uColor.value.copy(p.shock > p.glow ? ZAP : this.glowColor);
     halo.uniforms.uStrength.value = Math.max(p.glow, p.shock) * 0.75;
@@ -203,7 +196,8 @@ export class GhostRig {
     fire.uLevel.value = p.fireLevel;
     fire.uSmoke.value = p.smoke;
     fire.uZap.value = p.shock;
-    this.fire.material.visible = p.fire > 0.001 || p.smoke > 0.001 || p.shock > 0.001;
+    fire.uVein.value = p.vein;
+    this.fire.material.visible = p.fire > 0.001 || p.smoke > 0.001 || p.shock > 0.001 || p.vein > 0.001;
 
     // The clone trick's tiny ghosts sit outside the ghost's group so they stay put while he shrinks away.
     // Each one bursts out from its spot in his shape to its spot on the page, a little after or before the others,
@@ -213,16 +207,20 @@ export class GhostRig {
       if (minis.visible) {
         const s = 1 + (ENTERED.scale - 1) * this.enter;
         const homeY = ENTERED.y * this.enter;
-        const rx = Math.min(view.halfW * 0.85, 6);
-        // Clear of the menu at the top and the patience bar at the bottom
-        const ry = view.halfH * 0.66;
+        // Out to just inside the edges of the page
+        const rx = view.halfW * 0.9;
+        const ry = view.halfH * 0.88;
         const d = this.dummy;
         MINIS.forEach((m, i) => {
           const k = THREE.MathUtils.clamp(p.split * (1 + MINI_STAGGER) - m.delay, 0, 1);
           const fly = k * k * (3 - 2 * k) + 0.12 * Math.sin(Math.PI * k);
           const still = c.reducedMotion ? 0 : 1;
-          const tx = rx * m.out.r * Math.cos(m.out.a) + 0.08 * Math.sin(t * 1.3 + m.phase) * still;
-          const ty = view.centerY + ry * m.out.r * Math.sin(m.out.a) + 0.07 * Math.sin(t * 2.2 + m.phase) * still;
+          // Stretched from a circle out to a rectangle, so they reach the corners too
+          const cos = Math.cos(m.out.a);
+          const sin = Math.sin(m.out.a);
+          const reach = m.out.r / Math.max(Math.abs(cos), Math.abs(sin));
+          const tx = rx * reach * cos + 0.08 * Math.sin(t * 1.3 + m.phase) * still;
+          const ty = view.centerY + ry * reach * sin + 0.07 * Math.sin(t * 2.2 + m.phase) * still;
           const hx = m.home.x * s;
           const hy = m.home.y * s + homeY;
           d.position.set(hx + (tx - hx) * fly, hy + (ty - hy) * fly, 0.3 * Math.sin(m.phase) * fly);

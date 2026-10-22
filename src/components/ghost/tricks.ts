@@ -26,8 +26,7 @@ export type TrickName =
   | "bored"
   | "yawn"
   | "sleep"
-  | "waking"
-  | "grumpy";
+  | "waking";
 
 /** Offsets from the resting ghost. Rotations in radians, scales as multipliers, face values 0..1. */
 export type Pose = {
@@ -54,6 +53,8 @@ export type Pose = {
   lookX: number;
   /** Moves the mouth up the face, toward the eyes, in face units */
   mouthY: number;
+  /** Lifts a frown's corners toward its point, in face units, so it sits higher and shorter */
+  frownLift: number;
   /** Flames: strength, how far up the body they have climbed, soot left behind, smoke after */
   fire: number;
   fireLevel: number;
@@ -66,7 +67,7 @@ export type Pose = {
   minis: number;
   /** Electrocuted: black body, yellow sparks crackling around him */
   shock: number;
-  /** A red cartoon anger vein throbbing on his forehead */
+  /** A red cartoon anger vein throbbing in the air beside his head */
   vein: number;
 };
 
@@ -87,6 +88,7 @@ export const REST: Readonly<Pose> = {
   glowT: 0,
   lookX: 0,
   mouthY: 0,
+  frownLift: 0,
   fire: 0,
   fireLevel: 0,
   soot: 0,
@@ -111,15 +113,14 @@ export const TRICK_DURATION: Record<TrickName, number> = {
   fire: 4.8,
   attitude: 2.3,
   tornado: 3.8,
-  clone: 4.6,
+  clone: 4.9,
   curious: 3.6,
   zapped: 4.2,
   talk: Infinity,
   bored: 9,
   yawn: 2.6,
   sleep: Infinity,
-  waking: 2.2,
-  grumpy: 1.9,
+  waking: 1.6,
 };
 
 /**
@@ -130,14 +131,14 @@ export const TRICK_DURATION: Record<TrickName, number> = {
 export const TRICK_FACE: Record<TrickName, FaceName> = {
   backflip: "original", // 1
   attitude: "grim", // 2
-  tornado: "original", // 3
+  tornado: "original", // 3, turning Lilmad once he is dizzy (TRICK_FACE_LATER)
   clone: "original", // 4
   boing: "original", // 5, pending Aes's new trick
   neon: "original", // 6
   fire: "grim", // 7
   curious: "swag", // 8
   zapped: "lilmad", // 9
-  talk: "lilmad", // 10, with the red vein
+  talk: "lilmad", // 10, with the red vein, then the original face once the bubble opens (TRICK_FACE_LATER)
   grin: "grim",
   spin: "grim",
   squash: "grim",
@@ -148,12 +149,6 @@ export const TRICK_FACE: Record<TrickName, FaceName> = {
   yawn: "sleepy",
   sleep: "sleepy",
   waking: "original",
-  grumpy: "original",
-};
-
-/** Tricks that roll straight into another when they finish */
-export const TRICK_NEXT: Partial<Record<TrickName, TrickName>> = {
-  waking: "grumpy",
 };
 
 /**
@@ -176,6 +171,28 @@ export const TRICK_ORDER: TrickName[] = [
 
 /** Seconds of fed-up shaking on the tenth click before the speech bubble opens */
 export const TALK_LEAD = 0.9;
+
+/** How far the fire trick's mad mouth lifts its corners */
+const FIRE_FROWN_LIFT = 0.3;
+
+/** Seconds the tornado spins before he wobbles around dizzy */
+const TORNADO_SPIN = 1.5;
+
+/**
+ * Tricks that change face partway through, from `at` seconds in (Aes, 2026-10-22):
+ * dizzy after the tornado he wears the Lilmad mouth, and the fed-up tenth click calms back to the original face
+ * as the speech bubble opens.
+ */
+export const TRICK_FACE_LATER: Partial<Record<TrickName, { at: number; face: FaceName }>> = {
+  tornado: { at: TORNADO_SPIN, face: "lilmad" },
+  talk: { at: TALK_LEAD, face: "original" },
+};
+
+/** The face he wears `u` seconds into a trick */
+export function trickFace(name: TrickName, u: number): FaceName {
+  const later = TRICK_FACE_LATER[name];
+  return later && u >= later.at ? later.face : TRICK_FACE[name];
+}
 
 /** How many tiny ghosts he splits into for the clone trick */
 export const MINI_COUNT = 100;
@@ -284,6 +301,8 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       const panic = envelope(u, 0.35, 0.3, doused);
       out.frown = panic;
       out.grin = panic * (0.75 + 0.25 * Math.sin(u * 24));
+      // Aes asked for the mad mouth higher up the face (2026-10-22): its corners come up, its point stays under the eyes
+      out.frownLift = FIRE_FROWN_LIFT * panic;
       out.y = 0.2 * Math.abs(Math.sin(u * 11)) * panic;
       out.x = 0.16 * Math.sin(u * 5.5) * panic;
       out.rz = -0.07 * Math.sin(u * 5.5) * panic;
@@ -308,7 +327,7 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
     }
     case "tornado": {
       // Spins like a tornado, stretching tall, then stops and wobbles around dizzy with spiral eyes
-      const spinEnd = 1.5;
+      const spinEnd = TORNADO_SPIN;
       const spin = easeInOutCubic(u / spinEnd);
       out.ry = TAU * 7 * spin;
       const whirl = Math.sin(Math.PI * clamp01(u / spinEnd));
@@ -320,20 +339,30 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       out.rz += 0.14 * Math.sin(w * 5) * dizzy;
       out.rx = 0.1 * Math.cos(w * 5) * dizzy;
       out.x = 0.12 * Math.sin(w * 5 + 0.8) * dizzy;
-      // Aes asked for the smile much closer to the eyes (2026-10-19): up to just under the spirals
-      out.mouthY = 0.3 * dizzy;
+      // Aes asked for the mouth much closer to the eyes (2026-10-19): up to just under the spirals.
+      // Since 2026-10-22 it is the Lilmad face's frown.
+      out.mouthY = 0.35 * dizzy;
       break;
     }
     case "clone": {
       // He puffs up and splits into about a hundred tiny ghosts. They burst out all over the page and hover,
       // then rush back into his shape and he is whole again (Aes, 2026-10-19).
-      const burst = 0.4;
+      // Aes asked for a bigger POP! first (2026-10-22): he crouches, then swells up faster and faster,
+      // trembling and squeezing his eyes, and bursts.
+      const burst = 0.75;
       const regroup = d - 1.15;
       const merged = d - 0.4;
       if (u < burst) {
-        const puff = smooth(u / burst);
-        out.sx = out.sy = out.sz = 1 + 0.12 * puff + 0.02 * Math.sin(u * 50) * puff;
-        out.lid = 0.4 * puff;
+        const crouch = Math.sin(Math.PI * clamp01(u / 0.3));
+        squashPose(out, -0.2 * crouch);
+        const swell = smooth((u - 0.2) / (burst - 0.2));
+        const puff = 1 + 0.55 * swell * swell;
+        const tremble = 0.035 * Math.sin(u * 70) * swell;
+        out.sx *= puff + tremble;
+        out.sy *= puff - tremble;
+        out.sz *= puff;
+        out.x = 0.03 * Math.sin(u * 83) * swell;
+        out.lid = 0.6 * swell;
       } else if (u < merged) {
         out.sx = out.sy = out.sz = 0.0001;
       } else {
@@ -343,15 +372,18 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       }
       // The tiny ghosts take his place as he splits, and hand it back as he reappears
       out.minis = u < burst ? 0 : 1 - smooth((u - merged) / 0.1);
-      out.split = u < regroup ? smooth((u - burst) / 0.55) : 1 - easeInOutCubic((u - regroup) / (merged - regroup));
+      // They shoot out fast from the pop and ease to a stop
+      out.split = u < regroup ? 1 - Math.pow(1 - clamp01((u - burst) / 0.6), 3) : 1 - easeInOutCubic((u - regroup) / (merged - regroup));
       break;
     }
     case "curious": {
       // Curious (replaced the jumpscare, 2026-10-19): he floats up to the screen, tilts his head one way and then
-      // the other as if studying you, then drifts back to his place. Aes asked for him 50% closer (2026-10-19).
+      // the other as if studying you, then drifts back to his place. Aes asked for him 50% closer (2026-10-19),
+      // and 50% closer again to look more intimidating (2026-10-22).
       const near = Math.min(easeInOutCubic(u / 0.9), easeInOutCubic((d - u) / 0.9));
-      out.z = 3.3 * near;
-      out.y = -0.15 * near;
+      out.z = 4.95 * near;
+      // Lower, so his face stays in the middle of the screen this close up
+      out.y = -0.55 * near;
       out.rx = -0.06 * near;
       const tiltA = envelope(u - 0.75, 0.35, 0.35, 1.05);
       const tiltB = envelope(u - 1.65, 0.35, 0.4, 1.05);
@@ -385,10 +417,10 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       break;
     }
     case "talk": {
-      // Fed up: puffs up and shakes with the Lilmad face and a red vein. Then, as the speech bubble opens,
-      // he shrinks below it, still mad.
-      // A red anger vein pops on his forehead and keeps throbbing while the bubble is open (Aes, 2026-10-19)
-      out.vein = smooth(u / 0.2) * (0.85 + 0.15 * Math.sin(u * 9));
+      // Fed up: puffs up and shakes with the Lilmad face and a red anger vein floating beside his head.
+      // Then, as the speech bubble opens, the vein fades, he is back to his original face (TRICK_FACE_LATER),
+      // and he shrinks below the bubble (Aes, 2026-10-22).
+      out.vein = smooth(u / 0.2) * (1 - smooth((u - TALK_LEAD) / 0.25)) * (0.85 + 0.15 * Math.sin(u * 9));
       if (u < TALK_LEAD) {
         const e = envelope(u, 0.1, 0.25, TALK_LEAD);
         out.frown = e;
@@ -439,25 +471,14 @@ export function poseAt(name: TrickName, u: number, reducedMotion: boolean, out: 
       break;
     }
     case "waking": {
-      // Poked awake: eyes crack open into a squint, he sags back once, then drags himself upright
-      const sag = Math.max(0, Math.sin(Math.PI * clamp01((u - 0.8) / 0.7)));
-      out.lid = 1.15 - 0.65 * smooth(u / 0.6) + 0.3 * sag;
-      const up = smooth(u / 1.8);
-      out.y = -0.4 * (1 - up) - 0.08 * sag;
+      // Poked awake: his eyes open and he floats back upright with his original face. No sad or grumpy face
+      // afterwards (Aes, 2026-10-22).
+      out.lid = 1.15 * (1 - smooth(u / 0.9));
+      const up = smooth(u / 1.4);
+      out.y = -0.4 * (1 - up);
       out.rz = 0.1 * (1 - up);
       out.rx = 0.08 * (1 - up);
-      squashPose(out, 0.06 * Math.sin(Math.PI * clamp01((u - 1.2) / 0.9)));
-      break;
-    }
-    case "grumpy": {
-      // Woken up: a jolt, a frown, and a grumble
-      const e = envelope(u, 0.1, 0.5, d);
-      out.frown = e;
-      out.lid = 0.7 * e;
-      const jolt = spring(u, 0.22, 6, 16);
-      squashPose(out, Math.max(jolt, -0.1));
-      const grumble = Math.exp(-1.8 * u) * clamp01((1.4 - u) * 3);
-      out.rz = 0.06 * Math.sin(26 * u) * grumble;
+      squashPose(out, 0.05 * Math.sin(Math.PI * clamp01((u - 0.5) / 0.8)));
       break;
     }
   }
