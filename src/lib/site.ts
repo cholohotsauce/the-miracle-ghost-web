@@ -12,7 +12,7 @@ export const SITE_URL = (
 
 export const SITE_NAME = "The Miracle Ghost";
 
-/** Aes's Instagram handle, without the @. Shown on Contact, under the Shows map, and on the "told me off" card. */
+/** Aes's Instagram handle, without the @. Shown on Contact and on the "told me off" card. */
 export const INSTAGRAM_HANDLE = "themiracleghost";
 export const INSTAGRAM_URL = `https://www.instagram.com/${INSTAGRAM_HANDLE}/`;
 export const SITE_DESCRIPTION =

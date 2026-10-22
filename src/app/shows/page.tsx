@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PageTitle from "@/components/site/PageTitle";
 import SightingsMap from "@/components/shows/SightingsMap";
 import { shows, sightings, type Show } from "@/content/shows";
-import { INSTAGRAM_HANDLE, INSTAGRAM_URL, jsonLd } from "@/lib/site";
+import { jsonLd } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Shows",
@@ -111,13 +111,6 @@ export default function ShowsPage() {
           </h2>
           <p className="mb-5 mt-3 text-base md:text-lg">Select a ghost and reveal the city</p>
           <SightingsMap sightings={sightings} />
-          {/* Fans who find a sticker or a wall add to the map */}
-          <p className="mt-5 text-base md:text-lg">
-            Spotted a ghost out there? Snap it and tag{" "}
-            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="font-drip uppercase underline decoration-[var(--color-neon-green)] decoration-4 underline-offset-4">
-              @{INSTAGRAM_HANDLE}
-            </a>
-          </p>
         </section>
       </div>
     </main>
