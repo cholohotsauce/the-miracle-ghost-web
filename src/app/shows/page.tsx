@@ -14,18 +14,14 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 const fmt = (iso: string) =>
-  new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
-// Laid out like Aes's reference (2026-10-20): bold label, then date, title, and venue as plain
-// stacked lines, with thin rules only between the two lists
+// Laid out like Aes's list (2026-10-22): bold label, then title, gallery, city, and date as plain
+// stacked lines, with thin rules only between the two sections
 function ShowRow({ show }: { show: Show }) {
   return (
-    <li className="flex flex-col gap-7 py-2 md:gap-8">
-      <p className="text-xl uppercase md:text-2xl">
-        {fmt(show.start)}
-        {show.end && <> to {fmt(show.end)}</>}
-      </p>
-      <h3 className="text-xl font-bold uppercase leading-tight md:text-2xl">
+    <li className="flex flex-col gap-3 py-2 text-xl md:gap-4 md:text-2xl">
+      <h3 className="font-bold uppercase leading-tight">
         {show.title}
         {show.sample && (
           <span className="ml-2 inline-block -translate-y-0.5 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
@@ -33,10 +29,13 @@ function ShowRow({ show }: { show: Show }) {
           </span>
         )}
       </h3>
-      <p className="text-xl md:text-2xl">
-        {show.venue} · {show.city}
+      <p>{show.venue}</p>
+      <p>{show.city}</p>
+      <p>
+        {fmt(show.start)}
+        {show.end && <> to {fmt(show.end)}</>}
       </p>
-      {show.note && <p className="-mt-4 text-sm text-foreground/60">{show.note}</p>}
+      {show.note && <p className="text-sm text-foreground/60">{show.note}</p>}
       {show.link && (
         <a
           href={show.link}
@@ -97,11 +96,10 @@ export default function ShowsPage() {
           </div>
           {past.length > 0 && (
             <div className="border-t border-foreground/10 py-10 md:py-12">
-              <ListLabel>Past exhibitions</ListLabel>
-              <ul className="flex flex-col gap-12">
-                {past.map((s) => (
-                  <ShowRow key={s.title + s.start} show={s} />
-                ))}
+              {/* Only the most recent one, as Aes's "Last Exhibition" heading says */}
+              <ListLabel>Last exhibition</ListLabel>
+              <ul>
+                <ShowRow show={past[0]} />
               </ul>
             </div>
           )}
