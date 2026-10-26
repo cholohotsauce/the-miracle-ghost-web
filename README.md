@@ -55,7 +55,8 @@ Set these in Vercel → Project → Settings → Environment Variables:
 | `GHOST_MESSAGE_TO` | The inbox that receives them. |
 | `GHOST_MESSAGE_FROM` | The sender, on a domain verified in Resend, e.g. `The Miracle Ghost <ghost@themiracleghost.com>`. |
 | `CONTACT_TO` | Optional: a different inbox for the Contact form. |
-| `SHOPIFY_ADMIN_TOKEN` | Optional: adds early access sign-ups to Shopify as email subscribers (custom app with `read_customers` and `write_customers`). Without it, each sign-up is emailed instead. |
+| `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` | Optional: adds early access sign-ups to Shopify as email subscribers. From an app made in Shopify's Dev Dashboard with `read_customers` and `write_customers`, installed on the store. Without it, each sign-up is emailed instead. |
+| `SHOPIFY_ADMIN_TOKEN` | Optional: the same, with a fixed token from an older admin-created custom app. |
 | `NEXT_PUBLIC_SITE_URL` | The public address, e.g. `https://themiracleghost.com`, once the domain points to Vercel. |
 
 Stats: turn on Web Analytics in Vercel → Project → Analytics. Named events (tricks, tenth click, add to cart, sign-ups) need a Vercel plan that includes custom events.
