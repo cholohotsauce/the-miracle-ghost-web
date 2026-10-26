@@ -61,3 +61,37 @@ body {
     padding-bottom: 6rem;
   }
 }
+
+/* "Spooky soon" teaser (app/soon): the ghost floats and, now and then, nearly vanishes */
+.teaser-ghost {
+  animation:
+    teaser-haunt 7s ease-in-out infinite,
+    teaser-float 4s ease-in-out infinite;
+}
+
+.teaser-shadow {
+  background: radial-gradient(rgb(0 0 0 / 0.18), transparent 70%);
+  animation: teaser-shadow 4s ease-in-out infinite;
+}
+
+@keyframes teaser-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -14px; }
+}
+
+@keyframes teaser-haunt {
+  0%, 45%, 55%, 100% { opacity: 0.9; }
+  50% { opacity: 0.12; }
+}
+
+@keyframes teaser-shadow {
+  0%, 100% { transform: scaleX(1); opacity: 1; }
+  50% { transform: scaleX(0.8); opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teaser-ghost,
+  .teaser-shadow {
+    animation: none;
+  }
+}
