@@ -2,19 +2,22 @@ import type { Metadata } from "next";
 import { POSTER_URL } from "@/components/ghost/GhostPoster";
 import Countdown from "@/components/site/Countdown";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
-import { LAUNCH_AT } from "@/lib/launch";
+import { LAUNCH_AT, launchDateLabel } from "@/lib/launch";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: { absolute: SITE_NAME },
-  description: "Something is moving in. The Miracle Ghost, the street artist Aes out of Miami, opens on Halloween.",
+  description: "Something is moving in. The Miracle Ghost, the street artist Aes out of Miami, opens soon.",
 };
 
 /**
- * The "Spooky soon" teaser. src/proxy.ts shows it on the public domain until the Halloween launch.
+ * The "Spooky soon" teaser. src/proxy.ts shows it on the public domain until the launch.
  * It covers the whole window, so the menu and the corner ghost from the root layout stay hidden behind it.
+ * The countdown and date show only once a launch date is set, and not while SITE_MODE holds the teaser.
  */
 export default function Soon() {
+  const launchAt = process.env.SITE_MODE === "teaser" ? null : LAUNCH_AT;
+
   return (
     <main className="fixed inset-0 z-[60] flex flex-col items-center overflow-y-auto bg-background px-4 pt-[max(1.75rem,env(safe-area-inset-top))] pb-[max(1.75rem,env(safe-area-inset-bottom))] text-foreground">
       <p className="text-xs uppercase tracking-[0.35em]">{SITE_NAME}</p>
@@ -37,8 +40,12 @@ export default function Soon() {
           Spooky soon<span className="text-[var(--color-neon-green)] [text-shadow:0_0_18px_rgb(57_255_20/0.7)]">.</span>
         </h1>
 
-        <Countdown to={LAUNCH_AT} />
-        <p className="mt-5 text-[13px] tracking-[0.4em]">10.31.26</p>
+        {launchAt !== null && (
+          <>
+            <Countdown to={launchAt} />
+            <p className="mt-5 text-[13px] tracking-[0.4em]">{launchDateLabel(launchAt)}</p>
+          </>
+        )}
 
         <div className="mt-9 w-full max-w-sm">
           <EarlyAccessForm from="teaser" prompt="The ghost tells you first" cta="Haunt me" />
