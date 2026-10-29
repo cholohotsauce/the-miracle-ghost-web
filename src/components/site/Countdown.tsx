@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const UNITS = [
   ["Days", 86_400_000],
@@ -9,7 +9,7 @@ const UNITS = [
   ["Sec", 1_000],
 ] as const;
 
-/** Days, hours, minutes, and seconds left until `to`. At zero it reloads, so the launched site loads. */
+/** Days, hours, minutes, and seconds left until `to`. On reaching zero it reloads, so the launched site loads. */
 export default function Countdown({ to }: { to: number }) {
   // Unknown until the browser's clock is read, so the server render and the first paint match
   const [now, setNow] = useState<number | null>(null);
@@ -25,8 +25,16 @@ export default function Countdown({ to }: { to: number }) {
 
   const left = now === null ? null : Math.max(0, to - now);
 
+  // Reload only when zero is reached with the page open. A date already past on arrival means the
+  // teaser is being held, and reloading would never end.
+  const wasCounting = useRef(false);
   useEffect(() => {
-    if (left !== 0) return;
+    if (left === null) return;
+    if (left > 0) {
+      wasCounting.current = true;
+      return;
+    }
+    if (!wasCounting.current) return;
     const id = setTimeout(() => window.location.reload(), 1500);
     return () => clearTimeout(id);
   }, [left]);

@@ -106,29 +106,15 @@ function largestPiece(mask, width, height) {
   console.log(`Pin: ${width}×${height} (aspect ${(width / height).toFixed(4)})`);
 }
 
-// Icons: the black silhouette, centered. The home-screen icon sits on white. The browser icons stay
-// transparent but get a thin white rim, so the black ghost still shows on a dark tab bar (Aes uses dark
-// mode and could not see it, 2026-10-20).
+// Icons: the black silhouette, centered. The home-screen icon sits on white. The browser icons are the
+// ghost fully black on a transparent background, with no rim (Aes, 2026-10-20: "completamente negro").
 const iconGhost = (inner) =>
   sharp(ICON_SRC).trim({ threshold: 1 }).resize({ width: inner, height: inner, fit: "contain", background: "#ffffff00" });
 
-/** The black ghost on a white rim `rim` pixels wide, as a size×size PNG */
-async function rimmedIcon(size, rim) {
-  const inner = size - 2 * rim - Math.round(size * 0.04);
-  const ghost = await iconGhost(inner).toBuffer();
-  const { data } = await sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff00" } })
-    .composite([{ input: ghost, gravity: "center" }])
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const alpha = new Uint8Array(size * size);
-  for (let i = 0; i < alpha.length; i++) alpha[i] = data[i * 4 + 3];
-  const grown = dilate(alpha, size, size, rim);
-  const rimmed = Buffer.alloc(size * size * 4);
-  for (let i = 0; i < alpha.length; i++) {
-    rimmed.fill(255, i * 4, i * 4 + 3);
-    rimmed[i * 4 + 3] = grown[i];
-  }
-  return sharp(rimmed, { raw: { width: size, height: size, channels: 4 } })
+/** The black ghost centered in a transparent size×size PNG */
+async function blackIcon(size) {
+  const ghost = await iconGhost(size - Math.round(size * 0.04)).toBuffer();
+  return sharp({ create: { width: size, height: size, channels: 4, background: "#ffffff00" } })
     .composite([{ input: ghost, gravity: "center" }])
     .png({ compressionLevel: 9 })
     .toBuffer();
@@ -153,9 +139,9 @@ function ico(pngs) {
   return Buffer.concat([header, ...pngs.map((p) => p.png)]);
 }
 
-await writeFile("src/app/icon.png", await rimmedIcon(512, 22));
-// Small sizes are drawn at their own size, so the rim stays a crisp pixel wide
-const icoSizes = await Promise.all([16, 32, 48].map(async (size) => ({ size, png: await rimmedIcon(size, size < 48 ? 1 : 2) })));
+await writeFile("src/app/icon.png", await blackIcon(512));
+// Small sizes are drawn at their own size, so the edges stay crisp
+const icoSizes = await Promise.all([16, 32, 48].map(async (size) => ({ size, png: await blackIcon(size) })));
 await writeFile("src/app/favicon.ico", ico(icoSizes));
 {
   const size = 180;

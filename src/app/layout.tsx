@@ -24,7 +24,8 @@ const roundFont = Fredoka({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  // The tab reads only "The Miracle Ghost" on every page (Aes, 2026-10-22)
+  title: { default: SITE_NAME, template: SITE_NAME },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   openGraph: {
