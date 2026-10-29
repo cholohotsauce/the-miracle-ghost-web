@@ -4,7 +4,7 @@ export const MAX_MESSAGE = 600;
 export const MAX_CONTACT = 120;
 
 /** What the ghost barks on the tenth click, in Aes's words */
-export const GHOST_QUESTION = "Alright, buddy. Quit the poking.";
+export const GHOST_QUESTION = "ALRIGHT, BUDDY! ENOUGH WITH THE POKING!";
 
 /** The hint inside the message box under the question */
 export const GHOST_PROMPT = "Spit it out. I'll make sure the boss gets it.";
