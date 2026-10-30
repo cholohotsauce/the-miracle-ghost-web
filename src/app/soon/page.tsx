@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * The "Spooky soon" teaser. src/proxy.ts shows it on the public domain until the launch.
+ * The "Ghosting you. For now." teaser. src/proxy.ts shows it on the public domain until the launch.
  * It covers the whole window, so the menu and the corner ghost from the root layout stay hidden behind it.
  * The countdown and date show only once a launch date is set, and not while SITE_MODE holds the teaser.
  */
@@ -36,8 +36,15 @@ export default function Soon() {
           <div aria-hidden className="teaser-shadow absolute inset-x-[15%] -bottom-7 h-3.5 rounded-[50%]" />
         </div>
 
-        <h1 className="text-center text-[clamp(2.75rem,9vw,6.5rem)] uppercase leading-[0.9] tracking-[-0.04em]">
-          Spooky soon<span className="text-[var(--color-neon-green)] [text-shadow:0_0_18px_rgb(57_255_20/0.7)]">.</span>
+        <h1
+          aria-label="Ghosting you. For now."
+          className="text-center text-[clamp(2.75rem,9vw,6.5rem)] uppercase leading-[0.9] tracking-[-0.04em]"
+        >
+          <span aria-hidden>
+            G<span className="teaser-flicker">h</span>osting you.
+            <br />
+            For n<span className="teaser-flicker teaser-flicker-late">o</span>w<span className="teaser-dot">.</span>
+          </span>
         </h1>
 
         {launchAt !== null && (
