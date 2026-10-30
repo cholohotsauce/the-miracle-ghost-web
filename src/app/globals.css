@@ -62,7 +62,7 @@ body {
   }
 }
 
-/* "Spooky soon" teaser (app/soon): the ghost floats and, now and then, nearly vanishes */
+/* "Ghosting you" teaser (app/soon): the ghost floats and, now and then, nearly vanishes */
 .teaser-ghost {
   animation:
     teaser-haunt 7s ease-in-out infinite,
@@ -89,7 +89,41 @@ body {
   50% { transform: scaleX(0.8); opacity: 0.6; }
 }
 
+/* One letter at a time stutters like an old neon tube, then holds steady for a while */
+.teaser-flicker {
+  animation: teaser-flicker 9s linear infinite;
+}
+
+.teaser-flicker-late {
+  animation-duration: 13s;
+  animation-delay: -5s;
+}
+
+@keyframes teaser-flicker {
+  0%, 80%, 100% { opacity: 1; }
+  81% { opacity: 0.15; }
+  82% { opacity: 1; }
+  83.5% { opacity: 0.25; }
+  84% { opacity: 0.9; }
+  85.5% { opacity: 0.1; }
+  87% { opacity: 1; }
+}
+
+/* The last dot glows toxic green and breathes */
+.teaser-dot {
+  color: var(--color-neon-green);
+  text-shadow: 0 0 18px rgb(57 255 20 / 0.7);
+  animation: teaser-glow 3s ease-in-out infinite;
+}
+
+@keyframes teaser-glow {
+  0%, 100% { text-shadow: 0 0 10px rgb(57 255 20 / 0.45); }
+  50% { text-shadow: 0 0 6px rgb(57 255 20 / 0.9), 0 0 26px rgb(57 255 20 / 0.8), 0 0 48px rgb(57 255 20 / 0.45); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .teaser-flicker,
+  .teaser-dot,
   .teaser-ghost,
   .teaser-shadow {
     animation: none;
