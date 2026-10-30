@@ -1,6 +1,6 @@
 /**
  * The public launch. Until LAUNCH_AT, the public domain (themiracleghost.com) shows the
- * "Ghosting you" teaser on every page, while the Vercel address keeps the full site for review.
+ * "Coming soon" teaser on every page, while the Vercel address keeps the full site for review.
  * The switch happens on its own at LAUNCH_AT; see src/proxy.ts.
  *
  * Both are set in Vercel (a redeploy picks up the change):
