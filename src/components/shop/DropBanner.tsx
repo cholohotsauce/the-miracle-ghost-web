@@ -13,6 +13,7 @@ export default function DropBanner({ drop }: { drop: NextDrop | null }) {
   return (
     <section
       aria-labelledby="next-drop"
+      data-reveal
       className="relative mb-12 overflow-hidden bg-foreground px-5 py-2.5 text-background md:mb-16 md:px-10 md:py-4"
     >
       <SprayBackdrop />

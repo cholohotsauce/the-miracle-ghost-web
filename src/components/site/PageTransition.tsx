@@ -136,12 +136,24 @@ export function PageTransitionProvider({ children }: { children: ReactNode }) {
     setPhase("idle");
   }, []);
 
+  // Tell the rest of the site where the curtain is: scroll reveals wait for it to lift (components/site/Reveal.tsx)
+  useEffect(() => {
+    document.documentElement.dataset.curtain = phase;
+    if (phase === "reveal") window.dispatchEvent(new Event("curtain-lift"));
+  }, [phase]);
+
   const value = useMemo(() => ({ navigate }), [navigate]);
 
   return (
     <Ctx.Provider value={value}>
       {children}
       <PaintCurtain phase={phase} label={label} onCovered={onCovered} onRevealed={onRevealed} />
+      {/* A slow page: a thin green line creeps across the top of the curtain until it is ready */}
+      {phase === "wait" && (
+        <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[71] h-[3px]">
+          <div className="loading-line h-full w-full bg-[var(--color-neon-green)] shadow-[0_0_10px_var(--color-neon-green)]" />
+        </div>
+      )}
     </Ctx.Provider>
   );
 }

@@ -28,7 +28,7 @@ export default async function CategoryPage({ slug }: { slug: ShopCategorySlug })
       {products.length ? (
         <ul className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 md:gap-x-10 lg:grid-cols-4 touch-pan-y">
           {products.map((product, i) => (
-            <li key={product.id}>
+            <li key={product.id} data-reveal="item">
               <ProductCard
                 product={product}
                 price={formatPrice(product.price)}
@@ -40,7 +40,7 @@ export default async function CategoryPage({ slug }: { slug: ShopCategorySlug })
           ))}
         </ul>
       ) : (
-        <section className="max-w-md">
+        <section data-reveal className="max-w-md">
           <p className="mb-8 font-drip text-3xl uppercase leading-tight md:text-4xl">{category.empty}</p>
           <EarlyAccessForm from={`shop-${slug}`} prompt="Get on the list. The ghost tells you first." />
         </section>
@@ -49,6 +49,7 @@ export default async function CategoryPage({ slug }: { slug: ShopCategorySlug })
       <TransitionLink
         href={`/shop/${other.slug}`}
         curtain={other.label}
+        data-reveal
         className="mt-16 inline-flex items-center gap-3 border-t-2 border-line pt-6 font-drip text-3xl uppercase md:mt-24 md:text-4xl"
       >
         {other.label} <span aria-hidden className="font-sans text-2xl">→</span>

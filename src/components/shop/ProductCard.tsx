@@ -42,7 +42,11 @@ export default function ProductCard({ product, price, edition, lockedUntil, prio
             fill
             priority={priority}
             sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"
-            className={`object-cover transition-transform duration-500 group-hover:scale-[1.04] ${lockedUntil ? "scale-110 blur-xl" : ""}`}
+            // Comes in from a soft blur once loaded (globals.css); a locked piece stays blurred on purpose
+            onLoad={(e) => {
+              e.currentTarget.dataset.loaded = "";
+            }}
+            className={`object-cover transition-transform duration-500 group-hover:scale-[1.04] ${lockedUntil ? "scale-110 blur-xl" : "photo-in"}`}
           />
         )}
         {!product.available && !lockedUntil && <SoldOutStamp />}
