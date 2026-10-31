@@ -7,6 +7,8 @@ import MiniGhost from "@/components/site/MiniGhost";
 import { PageTransitionProvider } from "@/components/site/PageTransition";
 import Magnetic from "@/components/site/Magnetic";
 import Reveal from "@/components/site/Reveal";
+import Scramble from "@/components/site/Scramble";
+import TabGhost from "@/components/site/TabGhost";
 import SiteFooter from "@/components/site/SiteFooter";
 import TabHaunt from "@/components/site/TabHaunt";
 import { artistJsonLd, jsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -69,6 +71,8 @@ export default function RootLayout({
           <SiteFooter />
           <Reveal />
           <Magnetic />
+          <Scramble />
+          <TabGhost />
           <MiniGhost />
         </PageTransitionProvider>
         <TabHaunt />

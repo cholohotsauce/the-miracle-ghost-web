@@ -70,6 +70,7 @@ export default function EarlyAccessForm({
     <form onSubmit={submit} className="flex flex-col gap-2">
       <label
         htmlFor={id}
+        data-scramble={banner ? undefined : true}
         className={
           banner
             ? "text-base font-medium md:mb-1 md:text-xl"

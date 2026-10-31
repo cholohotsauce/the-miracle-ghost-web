@@ -27,7 +27,7 @@ export default function ContactPage() {
 
         <footer data-reveal className="mt-20 flex flex-wrap items-end justify-between gap-4 border-t-2 border-foreground pt-7">
           <div className="min-w-0">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Or DM the ghost</p>
+            <p data-scramble className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Or DM the ghost</p>
             <a
               href={INSTAGRAM_URL}
               target="_blank"

@@ -6,11 +6,14 @@ import { useEffect } from "react";
 const REACH = 70;
 const PULL = 0.28;
 const MAX_SHIFT = 10;
+/** The most a [data-tilt] card turns toward the mouse, in degrees */
+const MAX_TILT = 5;
 
 /**
  * Round buttons marked data-magnetic lean a few pixels toward the mouse when it comes near
  * (Round 4 polish). Desktop mice only; nothing happens on touch screens or with reduce motion.
  * The lean uses the CSS `translate` property, so it never fights a button's own transform.
+ * Cards marked data-tilt (the Shop doors, Round 5b) turn a few degrees in 3D toward the mouse while it is over them.
  */
 export default function Magnetic() {
   useEffect(() => {
@@ -22,6 +25,7 @@ export default function Magnetic() {
     let x = 0;
     let y = 0;
     const leaning = new Set<HTMLElement>();
+    const tilted = new Set<HTMLElement>();
 
     const update = () => {
       frame = 0;
@@ -41,6 +45,19 @@ export default function Magnetic() {
           leaning.delete(el);
         }
       });
+      document.querySelectorAll<HTMLElement>("[data-tilt]").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+        if (inside) {
+          const px = (x - r.left) / r.width - 0.5;
+          const py = (y - r.top) / r.height - 0.5;
+          el.style.transform = `perspective(900px) rotateX(${(-py * 2 * MAX_TILT).toFixed(2)}deg) rotateY(${(px * 2 * MAX_TILT).toFixed(2)}deg)`;
+          tilted.add(el);
+        } else if (tilted.has(el)) {
+          el.style.transform = "";
+          tilted.delete(el);
+        }
+      });
     };
 
     const onMove = (e: PointerEvent) => {
@@ -54,6 +71,7 @@ export default function Magnetic() {
       window.removeEventListener("pointermove", onMove);
       cancelAnimationFrame(frame);
       leaning.forEach((el) => (el.style.translate = ""));
+      tilted.forEach((el) => (el.style.transform = ""));
     };
   }, []);
 

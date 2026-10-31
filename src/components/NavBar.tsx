@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useEntered } from "@/lib/entry";
@@ -35,7 +35,7 @@ export default function NavBar() {
       onFocusCapture={() => setTucked(false)}
       className="fixed top-0 left-0 z-50 w-full bg-background/85 px-5 pt-[var(--nav-top)] backdrop-blur-md md:px-6 lg:px-12"
     >
-      <nav aria-label="Main" className="mx-auto max-w-[84rem] border-b-2 border-line">
+      <nav aria-label="Main" className="relative mx-auto max-w-[84rem] border-b-2 border-line">
         <ul className="flex items-start justify-between pb-2 md:justify-around md:pb-3">
           {links.map(({ href, label }) => {
             const active = isActive(pathname, href);
@@ -47,7 +47,8 @@ export default function NavBar() {
                   aria-current={active ? "page" : undefined}
                   className="group relative block px-1 py-1 font-drip text-[clamp(1.35rem,5.6vw,2.6rem)] uppercase leading-none text-foreground"
                 >
-                  <span className="inline-block transition-transform duration-300 group-hover:translate-y-0.5 group-active:translate-y-1">
+                  {/* On hover the letters flicker on like a neon sign warming up (globals.css, Round 5b) */}
+                  <span className="nav-neon inline-block transition-transform duration-300 group-hover:translate-y-0.5 group-active:translate-y-1">
                     {label}
                   </span>
                   <span
@@ -63,8 +64,45 @@ export default function NavBar() {
             );
           })}
         </ul>
+        {/* A thin green line over the menu's rule fills as you read down the page (not on Home, which doesn't scroll) */}
+        {pathname !== "/" && <ScrollLine />}
       </nav>
     </motion.header>
+  );
+}
+
+/** How far down the page you are, drawn as a green line along the bottom of the menu */
+function ScrollLine() {
+  const line = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    let frame = 0;
+    const draw = () => {
+      frame = 0;
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      const part = room > 0 ? Math.min(1, Math.max(0, window.scrollY / room)) : 0;
+      line.current?.style.setProperty("scale", `${part} 1`);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(draw);
+    };
+    draw();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  return (
+    <span
+      ref={line}
+      aria-hidden
+      className="pointer-events-none absolute -bottom-0.5 left-0 h-0.5 w-full origin-left bg-[var(--color-neon-green)] shadow-[0_0_8px_var(--color-neon-green)]"
+      style={{ scale: "0 1" }}
+    />
   );
 }
 

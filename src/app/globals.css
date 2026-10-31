@@ -610,3 +610,94 @@ body {
     animation: none;
   }
 }
+
+/*
+ * Round 5b (Archie, 2026-10-31): more small touches in the same bad-TV spirit.
+ */
+
+/* Menu: hovering a link makes its letters flicker on like a neon sign warming up */
+@media (hover: hover) {
+  .group:hover > .nav-neon {
+    animation: nav-neon 0.55s steps(1) both;
+  }
+}
+
+@keyframes nav-neon {
+  0% { opacity: 0.35; text-shadow: none; }
+  12% { opacity: 1; text-shadow: 0 0 10px rgb(57 255 20 / 0.7); }
+  20% { opacity: 0.45; text-shadow: none; }
+  34% { opacity: 1; text-shadow: 0 0 12px rgb(57 255 20 / 0.75); }
+  44% { opacity: 0.7; text-shadow: none; }
+  60%, 100% { opacity: 1; text-shadow: 0 0 6px rgb(57 255 20 / 0.35); }
+}
+
+/* Shows: each row slides in from the left with its date, instead of rising */
+.js-reveal .show-row[data-reveal] {
+  translate: -22px 0;
+}
+
+.js-reveal .show-row[data-reveal].is-in {
+  translate: 0 0;
+}
+
+/* Shows: hovering a show fills its title with green from left to right (the black stays as a thin outline) */
+.show-fill {
+  background: linear-gradient(90deg, var(--color-neon-green) 50%, var(--foreground) 50%) 100% 0 / 200% 100% no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: background-position 0.55s var(--ease-out-soft);
+}
+
+@media (hover: hover) {
+  .show-row:hover .show-fill {
+    background-position: 0 0;
+    -webkit-text-stroke: 1px var(--foreground);
+  }
+}
+
+/* Shop doors: the 3D tilt toward the mouse eases instead of snapping (components/site/Magnetic.tsx) */
+[data-tilt] {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Contact: an error message shows up with a quick bad-signal twitch */
+.err-glitch {
+  display: inline-block;
+  animation: err-glitch 0.45s steps(1) both;
+}
+
+@keyframes err-glitch {
+  0% { opacity: 0; translate: -6px 0; text-shadow: 3px 0 var(--color-neon-teal); }
+  15% { opacity: 1; translate: 4px 0; text-shadow: -3px 0 var(--color-neon-teal); clip-path: inset(0 0 45% 0); }
+  30% { translate: -2px 0; text-shadow: 2px 0 var(--color-neon-teal); clip-path: inset(40% 0 0 0); }
+  45% { translate: 1px 0; text-shadow: none; clip-path: none; }
+  60%, 100% { translate: 0 0; text-shadow: none; clip-path: none; opacity: 1; }
+}
+
+/* Product page: when something goes in the cart, the buy button bounces and a green ring pulses out */
+.cart-bounce {
+  animation: cart-bounce 0.6s var(--ease-out-soft);
+  border-radius: 9999px;
+}
+
+@keyframes cart-bounce {
+  0% { scale: 1; box-shadow: 0 0 0 0 rgb(57 255 20 / 0.7); }
+  25% { scale: 1.06; }
+  50% { scale: 0.97; }
+  75% { scale: 1.02; box-shadow: 0 0 0 16px rgb(57 255 20 / 0); }
+  100% { scale: 1; box-shadow: 0 0 0 0 rgb(57 255 20 / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group:hover > .nav-neon,
+  .err-glitch,
+  .cart-bounce {
+    animation: none;
+  }
+
+  .js-reveal .show-row[data-reveal] {
+    translate: none;
+  }
+}
