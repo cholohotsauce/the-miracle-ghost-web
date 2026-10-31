@@ -13,11 +13,11 @@ export default async function CategoryPage({ slug }: { slug: ShopCategorySlug })
   const products = inCategory(await getProducts(), slug);
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="mx-auto w-full max-w-[90rem] min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <TransitionLink
         href="/shop"
         curtain="Shop"
-        className="mb-4 inline-block font-mono text-xs uppercase tracking-[0.25em] text-foreground/60 underline-offset-4 hover:underline"
+        className="mb-4 inline-block font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline"
       >
         ← Shop
       </TransitionLink>

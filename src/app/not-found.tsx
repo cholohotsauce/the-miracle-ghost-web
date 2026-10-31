@@ -14,11 +14,16 @@ export default function NotFound() {
         <div aria-hidden className="teaser-shadow absolute inset-x-[15%] -bottom-7 h-3.5 rounded-[50%]" />
       </div>
 
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-foreground/60">Error 404</p>
-      <h1 className="mt-3 text-[clamp(2.5rem,9vw,6rem)] uppercase leading-[0.9] tracking-[-0.03em]">
-        This page got
-        <br />
-        ghosted<span className="teaser-dot">.</span>
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Error 404</p>
+      <h1 aria-label="This page got ghosted." className="mt-3 text-[clamp(2.5rem,9vw,6rem)] uppercase leading-[0.9] tracking-[-0.03em]">
+        <span aria-hidden>
+          This page got
+          <br />
+          <span className="soon-glitch" data-text="ghosted">
+            ghosted
+          </span>
+          <span className="teaser-dot">.</span>
+        </span>
       </h1>
       <p className="mt-6 max-w-sm text-base md:text-lg">It was here a second ago. Maybe it got buffed.</p>
 

@@ -147,7 +147,7 @@ export default function Lightbox({ works, index, onClose, onIndex }: Props) {
             </button>
             <div className="min-w-0 text-center">
               <p className="truncate text-base md:text-lg font-black uppercase tracking-widest">{work.title}</p>
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/50">The Miracle Ghost</p>
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-white/50">The Miracle Ghost</p>
             </div>
             <button
               type="button"

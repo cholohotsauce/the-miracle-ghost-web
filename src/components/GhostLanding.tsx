@@ -316,7 +316,7 @@ export default function GhostLanding() {
         onPoke={poke}
         onReady={() => setReady(true)}
         fallback={
-          <div className="flex h-full items-center justify-center font-mono text-xs uppercase tracking-[0.25em]">
+          <div className="flex h-full items-center justify-center font-mono text-xs uppercase tracking-[0.2em]">
             The ghost needs WebGL to appear.
           </div>
         }

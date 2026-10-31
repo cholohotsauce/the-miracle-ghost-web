@@ -54,7 +54,7 @@ export default function WorksGallery({ works, layout }: Props) {
                   {...(layout === "strip" ? { fill: true } : {})}
                 />
               </div>
-              <div className="mt-3 flex items-baseline justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.2em]">
+              <div className="mt-3 flex items-baseline justify-between gap-3 font-mono text-xs uppercase tracking-[0.2em]">
                 <span className="flex items-center gap-2 font-sans text-sm font-black tracking-widest">
                   <span
                     aria-hidden

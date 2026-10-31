@@ -74,8 +74,8 @@ export default function EarlyAccessForm({
           banner
             ? "text-base font-medium md:mb-1 md:text-xl"
             : compact
-              ? "font-mono text-[11px] uppercase tracking-[0.2em]"
-              : "font-mono text-xs uppercase tracking-[0.25em]"
+              ? "font-mono text-xs uppercase tracking-[0.2em]"
+              : "font-mono text-xs uppercase tracking-[0.2em]"
         }
       >
         {prompt}

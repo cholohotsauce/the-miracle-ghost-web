@@ -33,9 +33,9 @@ export default function NavBar() {
       inert={!shown}
       // Tabbing into the menu brings it back into view
       onFocusCapture={() => setTucked(false)}
-      className="fixed top-0 left-0 z-50 w-full bg-background/85 px-4 pt-[var(--nav-top)] backdrop-blur-md md:px-8"
+      className="fixed top-0 left-0 z-50 w-full bg-background/85 px-5 pt-[var(--nav-top)] backdrop-blur-md md:px-6 lg:px-12"
     >
-      <nav aria-label="Main" className="border-b-2 border-line">
+      <nav aria-label="Main" className="mx-auto max-w-[84rem] border-b-2 border-line">
         <ul className="flex items-start justify-between pb-2 md:justify-around md:pb-3">
           {links.map(({ href, label }) => {
             const active = isActive(pathname, href);

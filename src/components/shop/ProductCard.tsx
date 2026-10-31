@@ -68,12 +68,13 @@ export default function ProductCard({ product, price, edition, lockedUntil, prio
           </div>
         )}
       </div>
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-black uppercase tracking-widest">{product.title}</h2>
-          {edition && <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.2em] text-foreground/60">{edition}</p>}
+      {/* Two cards side by side on phones leave no room for the price next to the title, so it goes under */}
+      <div className="mt-3 flex flex-col gap-1 md:flex-row md:items-start md:justify-between md:gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base font-black uppercase tracking-widest [overflow-wrap:anywhere]">{product.title}</h2>
+          {edition && <p className="mt-0.5 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{edition}</p>}
         </div>
-        <p className={`font-mono text-sm ${product.available ? "" : "line-through opacity-50"}`}>{price}</p>
+        <p className={`shrink-0 font-mono text-sm ${product.available ? "" : "line-through opacity-50"}`}>{price}</p>
       </div>
     </TransitionLink>
   );

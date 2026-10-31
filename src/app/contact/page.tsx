@@ -16,7 +16,7 @@ export const metadata: Metadata = {
  */
 export default function ContactPage() {
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="mx-auto w-full max-w-[90rem] min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <PageTitle>Contact</PageTitle>
       <div className="mx-auto max-w-[58rem]">
         <p data-reveal className="max-w-[34rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
@@ -27,7 +27,7 @@ export default function ContactPage() {
 
         <footer data-reveal className="mt-20 flex flex-wrap items-end justify-between gap-4 border-t-2 border-foreground pt-7">
           <div className="min-w-0">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-foreground/60">Or DM the ghost</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Or DM the ghost</p>
             <a
               href={INSTAGRAM_URL}
               target="_blank"

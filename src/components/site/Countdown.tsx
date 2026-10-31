@@ -54,7 +54,7 @@ export default function Countdown({ to }: { to: number }) {
             >
               {left === null ? "--" : String(value).padStart(2, "0")}
             </b>
-            <span className="text-[10px] uppercase tracking-[0.3em] opacity-50">{label}</span>
+            <span className="text-xs uppercase tracking-[0.2em] opacity-50">{label}</span>
           </div>
         );
       })}

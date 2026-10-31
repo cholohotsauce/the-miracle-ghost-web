@@ -13,7 +13,7 @@ export default function Countdown({
   to,
   className = "",
   numberClassName = "font-mono text-3xl font-black md:text-4xl",
-  labelClassName = "font-mono text-[10px] tracking-[0.25em] opacity-60",
+  labelClassName = "font-mono text-xs tracking-[0.2em] opacity-60",
 }: {
   to: string;
   className?: string;
