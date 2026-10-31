@@ -147,7 +147,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         ref={box}
         role="group"
         aria-label="Globe with the ghost's sightings. Drag to spin it, and pick a ghost to reveal its city."
-        className="relative aspect-square w-full max-w-[34rem] cursor-grab select-none active:cursor-grabbing lg:ml-auto"
+        className="relative aspect-square w-full max-w-[34rem] cursor-grab select-none active:cursor-grabbing"
         style={{ touchAction: "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -188,7 +188,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         </div>
       </div>
 
-      <p className="mt-3 text-sm font-bold md:text-base lg:ml-auto lg:max-w-[34rem]">Only the &lsquo;known&rsquo; world is shown here.</p>
+      <p className="mt-3 text-sm font-bold md:text-base">Only the &lsquo;known&rsquo; world is shown here.</p>
 
       <AnimatePresence>
         {active && (
