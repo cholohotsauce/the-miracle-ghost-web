@@ -5,7 +5,8 @@
  *   Products not listed here show "1 of 1" when their Shopify type is "Original Art".
  * - `releasesAt` (ISO date with time zone) locks a product behind the ghost until that moment:
  *   the card and page show a countdown and the Buy button stays hidden.
- * - `nextDrop` is the teaser card at the top of the Shop. Set it to null to hide it.
+ * - `nextDrop` is the banner at the top of the Shop. While it is null, the banner says NEXT DROP / SOON
+ *   with the drop-alert sign-up. Give it a date and the banner counts down to it instead.
  */
 
 export type ProductExtra = {
@@ -25,12 +26,14 @@ export type NextDrop = {
   sample: boolean;
 };
 
-export const nextDrop: NextDrop | null = {
-  title: "Next drop",
-  teaser: "Something's coming out of the wall. Get on the list and the ghost tells you first.",
-  releasesAt: "2026-10-31T21:00:00-04:00",
-  sample: true,
-};
+// No date from Aes yet (launch postponed, 2026-10-28), so the banner says SOON. When there is one:
+// export const nextDrop: NextDrop | null = {
+//   title: "Next drop",
+//   teaser: "Something's coming out of the wall. Get on the list and the ghost tells you first.",
+//   releasesAt: "2026-12-01T21:00:00-05:00", // Miami time
+//   sample: false,
+// };
+export const nextDrop: NextDrop | null = null;
 
 export function editionFor(handle: string, productType: string) {
   return productExtras[handle]?.edition ?? (/original/i.test(productType) ? "1 of 1" : undefined);
@@ -43,6 +46,7 @@ export function lockedUntil(handle: string) {
 }
 
 /** The next drop teaser, while its countdown is still running */
-export function activeNextDrop() {
-  return nextDrop && new Date(nextDrop.releasesAt).getTime() > Date.now() ? nextDrop : null;
+export function activeNextDrop(): NextDrop | null {
+  const drop = nextDrop as NextDrop | null;
+  return drop && new Date(drop.releasesAt).getTime() > Date.now() ? drop : null;
 }

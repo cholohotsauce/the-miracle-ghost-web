@@ -5,6 +5,7 @@ import "./globals.css";
 import NavBar from "@/components/NavBar";
 import MiniGhost from "@/components/site/MiniGhost";
 import { PageTransitionProvider } from "@/components/site/PageTransition";
+import Magnetic from "@/components/site/Magnetic";
 import Reveal from "@/components/site/Reveal";
 import SiteFooter from "@/components/site/SiteFooter";
 import TabHaunt from "@/components/site/TabHaunt";
@@ -67,6 +68,7 @@ export default function RootLayout({
           {children}
           <SiteFooter />
           <Reveal />
+          <Magnetic />
           <MiniGhost />
         </PageTransitionProvider>
         <TabHaunt />

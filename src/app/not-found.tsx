@@ -26,14 +26,16 @@ export default function NotFound() {
         <TransitionLink
           href="/"
           curtain="Home"
-          className="rounded-full bg-foreground px-7 py-3.5 font-mono text-xs uppercase tracking-[0.2em] text-background transition-shadow hover:shadow-[4px_4px_0_var(--color-neon-green)]"
+          data-magnetic
+          className="inline-block rounded-full bg-foreground px-7 py-3.5 font-mono text-xs uppercase tracking-[0.2em] text-background transition-shadow hover:shadow-[4px_4px_0_var(--color-neon-green)]"
         >
           Back home
         </TransitionLink>
         <TransitionLink
           href="/shop"
           curtain="Shop"
-          className="rounded-full border-2 border-foreground px-7 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-shadow hover:shadow-[4px_4px_0_var(--color-neon-green)]"
+          data-magnetic
+          className="inline-block rounded-full border-2 border-foreground px-7 py-3 font-mono text-xs uppercase tracking-[0.2em] transition-shadow hover:shadow-[4px_4px_0_var(--color-neon-green)]"
         >
           Shop
         </TransitionLink>

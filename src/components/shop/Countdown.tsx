@@ -55,7 +55,16 @@ export default function Countdown({
     >
       {parts.map((p, i) => (
         <div key={labels[i]} className="flex flex-col items-center">
-          <span className={`leading-none ${numberClassName}`}>{p}</span>
+          <span className={`flex leading-none ${numberClassName}`}>
+            {/* Each digit rolls in from above when it changes, like a slot machine (globals.css) */}
+            {[...p].map((d, j) => (
+              <span key={j} className="digit-slot">
+                <span key={d} className="digit-roll">
+                  {d}
+                </span>
+              </span>
+            ))}
+          </span>
           <span className={`mt-1 uppercase ${labelClassName}`}>{labels[i]}</span>
         </div>
       ))}

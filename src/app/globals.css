@@ -261,7 +261,8 @@ body {
   transition:
     opacity 0.6s ease-out,
     filter 0.8s var(--ease-out-soft),
-    transform var(--photo-move, 0.5s) ease-out;
+    transform var(--photo-move, 0.5s) ease-out,
+    scale var(--photo-move, 0.5s) ease-out;
 }
 
 .photo-in[data-loaded] {
@@ -300,7 +301,8 @@ body {
     filter: none;
     transition:
       opacity 0.2s linear,
-      transform var(--photo-move, 0.5s) ease-out;
+      transform var(--photo-move, 0.5s) ease-out,
+      scale var(--photo-move, 0.5s) ease-out;
   }
 }
 
@@ -363,4 +365,146 @@ body {
     transform: scale(1.6, 0.7);
     opacity: 0.8;
   }
+}
+
+/* The globe's neon teal glow (Round 4). The globe's edge sits at about 89% of the box's half-width,
+   so the light starts just inside it and fades out into the page. 1 soft, 2 neon (default), 3 bloom. */
+.globe-glow {
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.globe-glow-1 {
+  background: radial-gradient(closest-side, transparent 84%, rgb(0 255 255 / 0.32) 89%, transparent 97%);
+}
+
+.globe-glow-2 {
+  background: radial-gradient(closest-side, transparent 83%, rgb(0 255 255 / 0.6) 89%, rgb(0 255 255 / 0.18) 94%, transparent 100%);
+  animation: globe-breathe 4.5s ease-in-out infinite;
+}
+
+.globe-glow-3 {
+  inset: -4% !important;
+  background: radial-gradient(closest-side, transparent 79%, rgb(0 255 255 / 0.85) 83.5%, rgb(0 255 255 / 0.35) 89%, rgb(0 255 255 / 0.08) 95%, transparent 100%);
+  animation: globe-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes globe-breathe {
+  0%, 100% { filter: brightness(1); scale: 1; }
+  50% { filter: brightness(1.15); scale: 1.012; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-glow-2,
+  .globe-glow-3 {
+    animation: none;
+  }
+}
+
+/* Countdown digits roll in from above when they change (Round 4) */
+.digit-slot {
+  display: inline-block;
+  overflow: hidden;
+  /* Room for the glyph's full height so the window does not cut it */
+  padding-block: 0.08em;
+  margin-block: -0.08em;
+}
+
+.digit-roll {
+  display: inline-block;
+  animation: digit-roll 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes digit-roll {
+  from { translate: 0 -105%; opacity: 0.2; }
+  to { translate: 0 0; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digit-roll {
+    animation: none;
+  }
+}
+
+/* Photos behind the Shop's doors: dimmed so the word stays loud, a little brighter on hover.
+   (Photos are only "loaded" once data-loaded is set, see .photo-in.) */
+.photo-door-dark[data-loaded] {
+  opacity: 0.38;
+}
+
+.group:hover .photo-door-dark[data-loaded] {
+  opacity: 0.55;
+}
+
+.photo-door-light[data-loaded] {
+  opacity: 0.16;
+  filter: grayscale(1);
+}
+
+.group:hover .photo-door-light[data-loaded] {
+  opacity: 0.3;
+  filter: grayscale(0);
+}
+
+/* Felipe Pantone nod (Round 4): on hover, a card's hard shadow runs through green, teal, and pink once,
+   then rests on its own color. --holo-rest is that color (green unless .holo-teal). */
+.holo-shadow {
+  --holo-rest: var(--color-neon-green);
+}
+
+.holo-teal {
+  --holo-rest: var(--color-neon-teal);
+}
+
+.holo-shadow:hover,
+.group:hover > .holo-shadow {
+  animation: holo-shadow 1.1s ease-in-out;
+}
+
+@keyframes holo-shadow {
+  0% { box-shadow: 8px 8px 0 var(--holo-rest); }
+  30% { box-shadow: 8px 8px 0 var(--color-neon-pink); }
+  65% { box-shadow: 8px 8px 0 var(--color-neon-teal); }
+  85% { box-shadow: 8px 8px 0 var(--color-neon-green); }
+  100% { box-shadow: 8px 8px 0 var(--holo-rest); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-shadow:hover,
+  .group:hover > .holo-shadow {
+    animation: none;
+  }
+}
+
+/* Product fold-outs open smoothly where the browser supports animating to "auto" height */
+@supports (interpolate-size: allow-keywords) {
+  .foldout {
+    interpolate-size: allow-keywords;
+  }
+
+  .foldout::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition:
+      block-size 0.35s var(--ease-out-soft),
+      content-visibility 0.35s allow-discrete;
+  }
+
+  .foldout[open]::details-content {
+    block-size: auto;
+  }
+}
+
+/* Magnetic buttons (components/site/Magnetic.tsx). This replaces each button's Tailwind transition,
+   so it lists everything those buttons animate on their own as well. */
+[data-magnetic] {
+  transition:
+    translate 0.35s var(--ease-out-soft),
+    transform 0.3s ease,
+    rotate 0.3s ease,
+    scale 0.3s ease,
+    box-shadow 0.3s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
