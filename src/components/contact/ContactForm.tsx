@@ -25,11 +25,11 @@ const MESSAGE_ERROR = "Tell the ghost something first.";
 
 const looksLikeEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
-const field = "w-full rounded-xl border-2 bg-background px-4 py-3.5 text-base outline-none placeholder:text-foreground/45";
+const field = "w-full rounded-xl border-2 bg-background px-4 py-3.5 text-base outline-none transition-shadow duration-300 placeholder:text-foreground/45";
 const fieldBorder = (bad?: string) =>
   bad
     ? "border-[var(--color-neon-pink)] shadow-[0_0_0_3px_rgb(255_0_255_/_0.2)] focus:shadow-[0_0_0_3px_rgb(255_0_255_/_0.35)]"
-    : "border-foreground focus:shadow-[0_0_0_3px_var(--color-neon-green)]";
+    : "border-foreground focus:shadow-[0_0_0_3px_var(--color-neon-green),0_0_24px_rgb(57_255_20_/_0.45)]";
 const label = "flex justify-between font-mono text-xs uppercase tracking-[0.2em] text-foreground/60";
 const pill =
   "rounded-full border-2 border-foreground px-4 py-2.5 font-mono text-xs uppercase tracking-[0.1em] transition-colors md:text-sm";
@@ -37,7 +37,7 @@ const pill =
 /** "01  What's this about?" — the numbered heading over each part of the form */
 function Step({ n, children }: { n: string; children: ReactNode }) {
   return (
-    <span className="mb-4 mt-12 flex items-baseline gap-3 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 first:mt-0 md:mt-14 md:text-sm">
+    <span data-scramble className="mb-4 mt-12 flex items-baseline gap-3 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 first:mt-0 md:mt-14 md:text-sm">
       <span className="tracking-[0.1em] text-foreground">{n}</span>
       {children}
     </span>
@@ -51,7 +51,8 @@ function Required() {
 function FieldError({ id, text }: { id: string; text?: string }) {
   if (!text) return null;
   return (
-    <span id={id} className="text-sm text-[var(--color-neon-pink)]">
+    // It shows up with a quick bad-signal twitch, like the SOON glitch (globals.css, Round 5b)
+    <span id={id} key={text} className="err-glitch text-sm text-[var(--color-neon-pink)]">
       {text}
     </span>
   );

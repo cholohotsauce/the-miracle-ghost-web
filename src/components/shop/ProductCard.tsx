@@ -72,7 +72,7 @@ export default function ProductCard({ product, price, edition, lockedUntil, prio
       <div className="mt-3 flex flex-col gap-1 md:flex-row md:items-start md:justify-between md:gap-3">
         <div className="min-w-0">
           <h2 className="text-base font-black uppercase tracking-widest [overflow-wrap:anywhere]">{product.title}</h2>
-          {edition && <p className="mt-0.5 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{edition}</p>}
+          {edition && <p data-scramble className="mt-0.5 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{edition}</p>}
         </div>
         <p className={`shrink-0 font-mono text-sm ${product.available ? "" : "line-through opacity-50"}`}>{price}</p>
       </div>

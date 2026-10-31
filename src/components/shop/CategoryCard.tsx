@@ -21,6 +21,7 @@ export default function CategoryCard({ category, index, photo }: { category: Sho
     <TransitionLink
       href={`/shop/${category.slug}`}
       curtain={category.label}
+      data-tilt
       onPointerEnter={(e) => look(e.currentTarget)}
       onFocus={(e) => look(e.currentTarget)}
       onPointerLeave={() => emitGhost({ type: "look-away" })}

@@ -24,14 +24,15 @@ const fmt = (iso: string) =>
 // with the gallery and city in small capitals under it, and a rule under every show
 function ShowRow({ show }: { show: Show }) {
   return (
-    <li data-reveal="item" className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
+    <li data-reveal="item" className="show-row group grid grid-cols-[5.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
       <p className="text-xs font-bold uppercase md:text-sm">
         {fmt(show.start)}
         {show.end && <> to {fmt(show.end)}</>}
       </p>
       <div>
         <h3 className="text-3xl font-bold uppercase leading-tight md:text-4xl">
-          {show.title}
+          {/* On hover the title fills with green from left to right (globals.css, Round 5b) */}
+          <span className="show-fill">{show.title}</span>
           {show.sample && (
             <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-xs font-normal tracking-[0.2em] text-foreground/60">
               SAMPLE

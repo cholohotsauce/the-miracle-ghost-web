@@ -98,7 +98,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
         <section data-reveal className="flex flex-col gap-6 md:sticky md:top-32 md:self-start">
           <div>
             {product.productType && (
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{product.productType}</p>
+              <p data-scramble className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{product.productType}</p>
             )}
             <h1 className="mt-2 text-4xl font-black uppercase leading-[0.95] tracking-wide md:text-6xl">{product.title}</h1>
             {edition && (

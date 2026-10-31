@@ -65,6 +65,13 @@ export default function ShopifyBuyButton({ productId, layout = "card" }: Props) 
                 events: {
                   addVariantToCart: () => {
                     emitGhost({ type: "cart-add" });
+                    // The button area gives a little bounce with a green ring (globals.css, Round 5b)
+                    const box = containerRef.current;
+                    if (box) {
+                      box.classList.remove("cart-bounce");
+                      void box.offsetWidth;
+                      box.classList.add("cart-bounce");
+                    }
                     track("add_to_cart");
                   },
                 },
