@@ -13,7 +13,9 @@ export const CONTACT_TOPICS = [
     id: "commission",
     label: "Commissions",
     hint: "A piece made just for you",
-    placeholder: "What do you want painted? Size, colors, the vibe…",
+    // Aes's text for the Message box (2026-10-30)
+    placeholder:
+      "Please provide a brief overview of your project, including your estimated budget, preferred timeline, dimensions, and any other relevant details.",
     details: [
       { id: "budget", label: "Budget", options: ["Under $1K", "$1K – $5K", "$5K+", "Not sure"] },
       { id: "timeline", label: "Timeline", placeholder: "When do you need it?" },

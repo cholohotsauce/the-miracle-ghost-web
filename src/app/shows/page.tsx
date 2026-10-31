@@ -14,44 +14,52 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 const fmt = (iso: string) =>
-  new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  new Date(`${iso}T12:00:00`)
+    .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    .toUpperCase();
 
-// Laid out like Aes's list (2026-10-22): bold label, then title, gallery, city, and date as plain
-// stacked lines, with thin rules only between the two sections
+// Laid out like Aes's drawing (2026-10-30): the date on the left, then the title in big letters
+// with the gallery and city in small capitals under it, and a rule under every show
 function ShowRow({ show }: { show: Show }) {
   return (
-    <li className="flex flex-col gap-3 py-2 text-xl md:gap-4 md:text-2xl">
-      <h3 className="font-bold uppercase leading-tight">
-        {show.title}
-        {show.sample && (
-          <span className="ml-2 inline-block -translate-y-0.5 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
-            SAMPLE
-          </span>
-        )}
-      </h3>
-      <p>{show.venue}</p>
-      <p>{show.city}</p>
-      <p>
+    <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
+      <p className="text-xs font-bold uppercase md:text-sm">
         {fmt(show.start)}
         {show.end && <> to {fmt(show.end)}</>}
       </p>
-      {show.note && <p className="text-sm text-foreground/60">{show.note}</p>}
-      {show.link && (
-        <a
-          href={show.link}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-block w-fit rounded-full bg-foreground px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-background"
-        >
-          Details
-        </a>
-      )}
+      <div>
+        <h3 className="text-3xl font-bold uppercase leading-tight md:text-5xl">
+          {show.title}
+          {show.sample && (
+            <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
+              SAMPLE
+            </span>
+          )}
+        </h3>
+        <p className="mt-2 text-xs font-bold uppercase leading-snug md:text-sm">
+          {show.venue}
+          <br />
+          {show.city}
+        </p>
+        {show.note && <p className="mt-2 text-sm text-foreground/60">{show.note}</p>}
+        {show.link && (
+          <a
+            href={show.link}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-block w-fit rounded-full bg-foreground px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] text-background"
+          >
+            Details
+          </a>
+        )}
+      </div>
     </li>
   );
 }
 
+/** "Upcoming" and "Past": plain capitals with a rule under them */
 function ListLabel({ children }: { children: string }) {
-  return <h3 className="mb-7 text-xl font-bold uppercase md:mb-8 md:text-2xl">{children}</h3>;
+  return <h3 className="border-b-2 border-line pb-2 text-2xl uppercase md:text-3xl">{children}</h3>;
 }
 
 export default function ShowsPage() {
@@ -77,39 +85,40 @@ export default function ShowsPage() {
       )}
       <PageTitle>Shows</PageTitle>
 
-      <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+      <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-20">
         <section aria-labelledby="timeline" className="lg:pt-6">
           <h2 id="timeline" className="sr-only">
             Timeline
           </h2>
-          <div className="pb-10 md:pb-12">
-            <ListLabel>Upcoming</ListLabel>
-            {upcoming.length ? (
-              <ul className="flex flex-col gap-12">
-                {upcoming.map((s) => (
+          <ListLabel>Upcoming</ListLabel>
+          {upcoming.length ? (
+            <ul>
+              {upcoming.map((s) => (
+                <ShowRow key={s.title + s.start} show={s} />
+              ))}
+            </ul>
+          ) : (
+            <p className="border-b-2 border-line py-10 text-3xl font-bold uppercase leading-tight md:py-14 md:text-5xl">
+              To be announced
+            </p>
+          )}
+          {past.length > 0 && (
+            <div className="mt-10 md:mt-14">
+              <ListLabel>Past</ListLabel>
+              <ul>
+                {past.map((s) => (
                   <ShowRow key={s.title + s.start} show={s} />
                 ))}
-              </ul>
-            ) : (
-              <p className="text-xl font-bold uppercase md:text-2xl">To be announced</p>
-            )}
-          </div>
-          {past.length > 0 && (
-            <div className="border-t border-foreground/10 py-10 md:py-12">
-              {/* Only the most recent one, as Aes's "Last Exhibition" heading says */}
-              <ListLabel>Last exhibition</ListLabel>
-              <ul>
-                <ShowRow show={past[0]} />
               </ul>
             </div>
           )}
         </section>
 
-        <section aria-labelledby="sightings" className="lg:pt-6">
+        <section aria-labelledby="sightings" className="lg:pt-14">
           <h2 id="sightings" className="font-drip text-5xl uppercase leading-none md:text-6xl">
             Ghost sightings
           </h2>
-          <p className="mb-5 mt-3 text-base md:text-lg">Select a ghost and reveal the city</p>
+          <p className="mb-4 mt-3 text-sm font-bold md:text-base">Select a ghost and reveal the city</p>
           <SightingsMap sightings={sightings} />
         </section>
       </div>
