@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
+import PageTitle from "@/components/site/PageTitle";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -11,17 +12,16 @@ export const metadata: Metadata = {
 /**
  * Aes's Contact page (redesign 2026-10-22): one column with the title, the inquiry form,
  * and the Instagram handle on its own strip at the bottom so it never runs into the form.
+ * The title is the same size as Shows and Shop, with the same rule under it (Aes, 2026-10-30).
  */
 export default function ContactPage() {
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-28 md:pt-36 px-4 md:px-6 pb-page">
+    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+      <PageTitle>Contact</PageTitle>
       <div className="mx-auto max-w-[58rem]">
-        <header>
-          <h1 className="font-drip text-[clamp(4rem,17vw,9.5rem)] uppercase leading-[0.85] tracking-[-0.02em]">Contact</h1>
-          <p className="mt-5 max-w-[34rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
-            Commissions, collabs, press, or anything else. Pick a topic and tell the ghost.
-          </p>
-        </header>
+        <p className="max-w-[34rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
+          Commissions, collabs, press, or anything else. Pick a topic and tell the ghost.
+        </p>
 
         <ContactForm />
 
