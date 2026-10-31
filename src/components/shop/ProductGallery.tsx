@@ -38,7 +38,10 @@ export default function ProductGallery({ images, title, children }: { images: Pr
             fill
             priority
             sizes="(min-width: 768px) 55vw, 100vw"
-            className="object-contain transition-transform duration-200 ease-out"
+            onLoad={(e) => {
+              e.currentTarget.dataset.loaded = "";
+            }}
+            className="photo-in object-contain [--photo-move:0.2s]"
             style={zoom ? { transform: `scale(${ZOOM})`, transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
           />
         )}

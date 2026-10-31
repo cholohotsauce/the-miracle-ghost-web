@@ -5,6 +5,7 @@ import "./globals.css";
 import NavBar from "@/components/NavBar";
 import MiniGhost from "@/components/site/MiniGhost";
 import { PageTransitionProvider } from "@/components/site/PageTransition";
+import Reveal from "@/components/site/Reveal";
 import SiteFooter from "@/components/site/SiteFooter";
 import TabHaunt from "@/components/site/TabHaunt";
 import { artistJsonLd, jsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -53,14 +54,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The inline script below adds js-reveal before React loads
+      suppressHydrationWarning
       className={`${spaceGrotesk.variable} ${roundFont.variable} antialiased`}
     >
       <body className="min-h-[100dvh] flex flex-col bg-background text-foreground">
+        {/* Lets the scroll reveals hide content before the first paint; without scripts, nothing is hidden */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js-reveal')" }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(artistJsonLd)} />
         <PageTransitionProvider>
           <NavBar />
           {children}
           <SiteFooter />
+          <Reveal />
           <MiniGhost />
         </PageTransitionProvider>
         <TabHaunt />

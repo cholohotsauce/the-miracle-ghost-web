@@ -19,13 +19,13 @@ export default function ContactPage() {
     <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <PageTitle>Contact</PageTitle>
       <div className="mx-auto max-w-[58rem]">
-        <p className="max-w-[34rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
+        <p data-reveal className="max-w-[34rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
           Commissions, collabs, press, or anything else. Pick a topic and tell the ghost.
         </p>
 
         <ContactForm />
 
-        <footer className="mt-20 flex flex-wrap items-end justify-between gap-4 border-t-2 border-foreground pt-7">
+        <footer data-reveal className="mt-20 flex flex-wrap items-end justify-between gap-4 border-t-2 border-foreground pt-7">
           <div className="min-w-0">
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-foreground/60">Or DM the ghost</p>
             <a

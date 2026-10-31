@@ -22,7 +22,7 @@ const fmt = (iso: string) =>
 // with the gallery and city in small capitals under it, and a rule under every show
 function ShowRow({ show }: { show: Show }) {
   return (
-    <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
+    <li data-reveal="item" className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
       <p className="text-xs font-bold uppercase md:text-sm">
         {fmt(show.start)}
         {show.end && <> to {fmt(show.end)}</>}
@@ -59,7 +59,7 @@ function ShowRow({ show }: { show: Show }) {
 
 /** "Upcoming" and "Past": plain capitals with a rule under them */
 function ListLabel({ children }: { children: string }) {
-  return <h3 className="border-b-2 border-line pb-2 text-2xl uppercase md:text-3xl">{children}</h3>;
+  return <h3 data-reveal className="border-b-2 border-line pb-2 text-2xl uppercase md:text-3xl">{children}</h3>;
 }
 
 export default function ShowsPage() {
@@ -98,7 +98,7 @@ export default function ShowsPage() {
               ))}
             </ul>
           ) : (
-            <p className="border-b-2 border-line py-10 text-3xl font-bold uppercase leading-tight md:py-14 md:text-5xl">
+            <p data-reveal className="border-b-2 border-line py-10 text-3xl font-bold uppercase leading-tight md:py-14 md:text-5xl">
               To be announced
             </p>
           )}
@@ -114,7 +114,7 @@ export default function ShowsPage() {
           )}
         </section>
 
-        <section aria-labelledby="sightings" className="lg:pt-14">
+        <section aria-labelledby="sightings" data-reveal className="lg:pt-14">
           <h2 id="sightings" className="font-drip text-5xl uppercase leading-none md:text-6xl">
             Ghost sightings
           </h2>

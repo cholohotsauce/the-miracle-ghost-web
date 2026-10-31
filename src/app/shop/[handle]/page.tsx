@@ -92,7 +92,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
           {!product.available && !locked && <SoldOutStamp size="lg" />}
         </ProductGallery>
 
-        <section className="flex flex-col gap-6 md:sticky md:top-32 md:self-start">
+        <section data-reveal className="flex flex-col gap-6 md:sticky md:top-32 md:self-start">
           <div>
             {product.productType && (
               <p className="font-mono text-xs uppercase tracking-[0.25em] text-foreground/60">{product.productType}</p>
@@ -136,10 +136,10 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
 
       {others.length > 0 && (
         <section className="mt-20 border-t-2 border-line pt-8 md:mt-28">
-          <h2 className="mb-8 font-drip text-4xl uppercase md:text-5xl">More off the wall</h2>
+          <h2 data-reveal className="mb-8 font-drip text-4xl uppercase md:text-5xl">More off the wall</h2>
           <ul className="grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-10 lg:grid-cols-4">
             {others.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} data-reveal="item">
                 <ProductCard
                   product={p}
                   price={formatPrice(p.price)}

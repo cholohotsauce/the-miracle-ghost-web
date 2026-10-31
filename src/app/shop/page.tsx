@@ -22,7 +22,7 @@ export default function ShopPage() {
       <DropBanner drop={activeNextDrop()} />
       <ul className="grid gap-6 md:grid-cols-2 md:gap-10">
         {SHOP_CATEGORIES.map((c, i) => (
-          <li key={c.slug}>
+          <li key={c.slug} data-reveal="item">
             <CategoryCard category={c} index={i} />
           </li>
         ))}

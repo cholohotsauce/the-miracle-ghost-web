@@ -25,7 +25,7 @@ export default function SiteFooter() {
 
   return (
     <footer className="w-full bg-background px-5 text-foreground md:px-6 lg:px-12">
-      <div className="border-t-2 border-line pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-8 md:pb-10 md:pl-40 md:pt-10">
+      <div data-reveal className="border-t-2 border-line pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-8 md:pb-10 md:pl-40 md:pt-10">
         <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-12">
           <div className="w-full max-w-md">
             <EarlyAccessForm from="footer" prompt="Drop alerts. The ghost tells you first." cta="Haunt me" />

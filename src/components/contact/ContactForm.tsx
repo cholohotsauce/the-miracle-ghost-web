@@ -172,7 +172,7 @@ export default function ContactForm() {
           {CONTACT_TOPICS.map((t, i) => {
             const on = t.id === topicId;
             return (
-              <label key={t.id} className="cursor-pointer">
+              <label key={t.id} data-reveal="item" className="cursor-pointer">
                 <input
                   type="radio"
                   name="topic"
