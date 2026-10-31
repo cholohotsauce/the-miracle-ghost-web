@@ -31,7 +31,7 @@ export default function NavBar() {
       inert={!shown}
       className="fixed top-0 left-0 z-50 w-full bg-background/85 px-4 pt-[var(--nav-top)] backdrop-blur-md md:px-8"
     >
-      <nav aria-label="Main" className="border-b border-line/80">
+      <nav aria-label="Main" className="border-b-2 border-line">
         <ul className="flex items-start justify-between pb-2 md:justify-around md:pb-3">
           {links.map(({ href, label }) => {
             const active = isActive(pathname, href);

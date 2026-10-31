@@ -14,13 +14,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/shop" },
 };
 
-/** Aes's Shop (mockup 2026-10-15): drop banner, then one door for Merch and one for Artwork */
+/** Aes's Shop (mockup 2026-10-15): drop banner, then one door for Merch and one for Artwork, as wide as the banner */
 export default function ShopPage() {
   return (
     <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <PageTitle bleed>Shop</PageTitle>
       <DropBanner drop={activeNextDrop()} />
-      <ul className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2 md:gap-10">
+      <ul className="grid gap-6 md:grid-cols-2 md:gap-10">
         {SHOP_CATEGORIES.map((c, i) => (
           <li key={c.slug}>
             <CategoryCard category={c} index={i} />

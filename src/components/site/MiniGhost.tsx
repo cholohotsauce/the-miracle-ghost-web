@@ -33,6 +33,8 @@ export default function MiniGhost() {
   const [line, setLine] = useState<string | null>(null);
   // While someone types in a form, he ducks out of the way
   const [typing, setTyping] = useState(false);
+  // While the page scrolls on a phone, he ducks lower so text can pass over him
+  const [scrolling, setScrolling] = useState(false);
   const sayTimer = useRef<number | undefined>(undefined);
   const lookAt = useRef<{ x: number; y: number } | null>(null);
   const controls = useRef<GhostState>({
@@ -103,6 +105,28 @@ export default function MiniGhost() {
     };
   }, []);
 
+  useEffect(() => {
+    if (hidden) return;
+    let timer: number | undefined;
+    let on = false;
+    const onScroll = () => {
+      if (!on) {
+        on = true;
+        setScrolling(true);
+      }
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        on = false;
+        setScrolling(false);
+      }, 450);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.clearTimeout(timer);
+    };
+  }, [hidden]);
+
   // A little hello on each new page
   useEffect(() => {
     if (hidden) return;
@@ -156,10 +180,11 @@ export default function MiniGhost() {
   if (hidden) return null;
 
   return (
-    // On phones he peeks up from the bottom edge so he never covers the page, and rises when he has something to say
+    // On phones he peeks up from the bottom edge so he never covers the page, ducks lower while the page scrolls,
+    // and rises when he has something to say
     <div
       className={`pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)-0.75rem)] -left-2 z-40 transition-transform duration-500 ease-out md:bottom-0 md:left-2 ${
-        typing ? "translate-y-full" : line ? "translate-y-0" : "max-md:translate-y-[42%]"
+        typing ? "translate-y-full" : line ? "translate-y-0" : scrolling ? "max-md:translate-y-[72%]" : "max-md:translate-y-[42%]"
       }`}
     >
       <AnimatePresence>
@@ -178,7 +203,7 @@ export default function MiniGhost() {
           </motion.p>
         )}
       </AnimatePresence>
-      <div ref={box} className="relative h-36 w-28 [container-type:size] md:h-48 md:w-40">
+      <div ref={box} className="relative h-[6.75rem] w-[5.25rem] [container-type:size] md:h-48 md:w-40">
         <GhostPoster visible={!ready} scale={0.92} y={-0.3} />
         <GhostStage
           controls={controls}

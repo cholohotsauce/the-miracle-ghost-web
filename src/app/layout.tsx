@@ -5,6 +5,7 @@ import "./globals.css";
 import NavBar from "@/components/NavBar";
 import MiniGhost from "@/components/site/MiniGhost";
 import { PageTransitionProvider } from "@/components/site/PageTransition";
+import SiteFooter from "@/components/site/SiteFooter";
 import TabHaunt from "@/components/site/TabHaunt";
 import { artistJsonLd, jsonLd, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
         <PageTransitionProvider>
           <NavBar />
           {children}
+          <SiteFooter />
           <MiniGhost />
         </PageTransitionProvider>
         <TabHaunt />
