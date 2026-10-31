@@ -129,7 +129,7 @@ function Earth({
             </div>
             {/* The city, revealed over the selected ghost */}
             {hasOpen && (
-              <p className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-foreground bg-background px-3 py-1 font-mono text-[11px] uppercase tracking-[0.15em] text-foreground">
+              <p className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-foreground bg-background px-3 py-1 font-mono text-xs uppercase tracking-[0.1em] text-foreground">
                 {g.city}
               </p>
             )}

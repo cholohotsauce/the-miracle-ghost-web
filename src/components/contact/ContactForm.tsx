@@ -30,14 +30,14 @@ const fieldBorder = (bad?: string) =>
   bad
     ? "border-[var(--color-neon-pink)] shadow-[0_0_0_3px_rgb(255_0_255_/_0.2)] focus:shadow-[0_0_0_3px_rgb(255_0_255_/_0.35)]"
     : "border-foreground focus:shadow-[0_0_0_3px_var(--color-neon-green)]";
-const label = "flex justify-between font-mono text-xs uppercase tracking-[0.3em] text-foreground/60";
+const label = "flex justify-between font-mono text-xs uppercase tracking-[0.2em] text-foreground/60";
 const pill =
-  "rounded-full border-2 border-foreground px-4 py-2.5 font-mono text-xs uppercase tracking-[0.12em] transition-colors md:text-sm";
+  "rounded-full border-2 border-foreground px-4 py-2.5 font-mono text-xs uppercase tracking-[0.1em] transition-colors md:text-sm";
 
 /** "01  What's this about?" — the numbered heading over each part of the form */
 function Step({ n, children }: { n: string; children: ReactNode }) {
   return (
-    <span className="mb-4 mt-12 flex items-baseline gap-3 font-mono text-xs uppercase tracking-[0.3em] text-foreground/60 first:mt-0 md:mt-14 md:text-sm">
+    <span className="mb-4 mt-12 flex items-baseline gap-3 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 first:mt-0 md:mt-14 md:text-sm">
       <span className="tracking-[0.1em] text-foreground">{n}</span>
       {children}
     </span>
@@ -141,9 +141,18 @@ export default function ContactForm() {
     return (
       <div
         role="status"
-        className="mt-12 rounded-[20px] border-2 border-foreground p-6 shadow-[8px_8px_0_var(--color-neon-green)] md:mt-14 md:p-8"
+        className="sent-card mt-12 rounded-[20px] border-2 border-foreground p-6 shadow-[8px_8px_0_var(--color-neon-green)] md:mt-14 md:p-8"
       >
-        <p className="font-drip text-[clamp(3rem,10vw,5rem)] uppercase leading-[0.9]">Sent.</p>
+        {/* The same bad-signal glitch as the teaser's SOON, with the breathing green dot */}
+        <p className="font-drip text-[clamp(3rem,10vw,5rem)] uppercase leading-[0.9]">
+          <span className="sr-only">Sent.</span>
+          <span aria-hidden>
+            <span className="soon-glitch" data-text="Sent">
+              Sent
+            </span>
+            <span className="teaser-dot">.</span>
+          </span>
+        </p>
         <p className="mt-3 text-lg leading-snug text-foreground/70">
           Aes reads every one. If it&apos;s a fit, you&apos;ll hear back at {email.trim()}.
         </p>
@@ -332,10 +341,21 @@ export default function ContactForm() {
         <button
           type="submit"
           disabled={status === "sending"}
-          className="flex h-16 w-full items-center justify-center gap-4 rounded-full bg-foreground px-10 font-mono text-base uppercase tracking-[0.3em] text-background shadow-[6px_6px_0_var(--color-neon-green)] transition-[transform,box-shadow] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[8px_8px_0_var(--color-neon-green)] active:translate-x-1 active:translate-y-1 active:shadow-none disabled:opacity-40 md:w-auto"
+          aria-busy={status === "sending"}
+          className="send-button relative flex h-16 w-full items-center overflow-hidden justify-center gap-4 rounded-full bg-foreground px-10 font-mono text-base uppercase tracking-[0.2em] text-background shadow-[6px_6px_0_var(--color-neon-green)] transition-[transform,box-shadow] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[8px_8px_0_var(--color-neon-green)] active:translate-x-1 active:translate-y-1 active:shadow-none disabled:cursor-wait md:w-auto"
         >
-          {status === "sending" ? "Sending…" : "Send message"}
-          {status !== "sending" && <span aria-hidden>→</span>}
+          {/* While it sends, a green light sweeps along the bottom of the button */}
+          {status === "sending" && <span aria-hidden className="send-sweep absolute inset-x-0 bottom-0 h-1" />}
+          {status === "sending" ? "Sending" : "Send message"}
+          {status === "sending" ? (
+            <span aria-hidden className="send-dots">
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
+          ) : (
+            <span aria-hidden>→</span>
+          )}
         </button>
         <p className="text-sm text-foreground/60">Aes reads every one.</p>
       </div>

@@ -109,7 +109,7 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
             <button
               type="button"
               onClick={onDone}
-              className="h-9 self-center px-2 font-mono text-[11px] uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline"
+              className="h-9 self-center px-2 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline"
             >
               Done
             </button>
@@ -162,7 +162,7 @@ export default function SpeechBubble({ onDone }: { onDone: () => void }) {
               <button
                 type="button"
                 onClick={onDone}
-                className="h-11 px-1 font-mono text-[11px] uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline"
+                className="h-11 px-1 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline"
               >
                 Never mind
               </button>

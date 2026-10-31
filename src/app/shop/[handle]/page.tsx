@@ -8,6 +8,7 @@ import ProductGallery from "@/components/shop/ProductGallery";
 import ProductViewStat from "@/components/shop/ProductViewStat";
 import SoldOutStamp from "@/components/shop/SoldOutStamp";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
+import SectionTitle from "@/components/site/SectionTitle";
 import TransitionLink from "@/components/site/TransitionLink";
 import { editionFor, lockedUntil } from "@/content/drops";
 import { CARE, CERTIFICATE, SHIPPING } from "@/content/productInfo";
@@ -77,14 +78,14 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
   };
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="mx-auto w-full max-w-[90rem] min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(productLd)} />
       <ProductViewStat handle={product.handle} />
 
       <TransitionLink
         href={`/shop/${category.slug}`}
         curtain={category.label}
-        className="mb-6 inline-block font-mono text-xs uppercase tracking-[0.25em] text-foreground/60 underline-offset-4 hover:underline md:mb-10"
+        className="mb-6 inline-block font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 underline-offset-4 hover:underline md:mb-10"
       >
         ← Back to {category.label}
       </TransitionLink>
@@ -97,7 +98,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
         <section data-reveal className="flex flex-col gap-6 md:sticky md:top-32 md:self-start">
           <div>
             {product.productType && (
-              <p className="font-mono text-xs uppercase tracking-[0.25em] text-foreground/60">{product.productType}</p>
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{product.productType}</p>
             )}
             <h1 className="mt-2 text-4xl font-black uppercase leading-[0.95] tracking-wide md:text-6xl">{product.title}</h1>
             {edition && (
@@ -110,11 +111,11 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
 
           <dl className="grid grid-cols-2 gap-px border-2 border-line bg-line font-mono text-sm">
             <div className="bg-background p-3">
-              <dt className="text-[10px] uppercase tracking-[0.25em] text-foreground/60">Price</dt>
+              <dt className="text-xs uppercase tracking-[0.2em] text-foreground/60">Price</dt>
               <dd className={`mt-1 text-lg font-bold ${product.available ? "" : "line-through opacity-50"}`}>{price}</dd>
             </div>
             <div className="bg-background p-3">
-              <dt className="text-[10px] uppercase tracking-[0.25em] text-foreground/60">Edition</dt>
+              <dt className="text-xs uppercase tracking-[0.2em] text-foreground/60">Edition</dt>
               <dd className="mt-1 text-lg font-bold">{edition ?? "Open"}</dd>
             </div>
           </dl>
@@ -145,8 +146,8 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
       </div>
 
       {others.length > 0 && (
-        <section className="mt-20 border-t-2 border-line pt-8 md:mt-28">
-          <h2 data-reveal className="mb-8 font-drip text-4xl uppercase md:text-5xl">More off the wall</h2>
+        <section className="mt-20 md:mt-28">
+          <SectionTitle className="mb-8">More off the wall</SectionTitle>
           <ul className="grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-10 lg:grid-cols-4">
             {others.map((p) => (
               <li key={p.id} data-reveal="item">

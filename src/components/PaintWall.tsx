@@ -218,7 +218,7 @@ export default function PaintWall({ onExit }: { onExit: () => void }) {
       className="absolute inset-0 z-30"
     >
       <canvas ref={canvasRef} aria-label="Spray paint on the wall" className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--nav-top)+4.5rem)] text-center font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/60 md:top-32">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--nav-top)+4.5rem)] text-center font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 md:top-32">
         Spray the wall. It fades.
       </div>
       <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] flex items-center justify-center gap-3 md:bottom-8">

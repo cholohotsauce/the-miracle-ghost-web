@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
 import PageTitle from "@/components/site/PageTitle";
+import SectionTitle from "@/components/site/SectionTitle";
 import SightingsMap from "@/components/shows/SightingsMap";
 import { shows, sightings, type Show } from "@/content/shows";
 import { jsonLd } from "@/lib/site";
@@ -29,10 +30,10 @@ function ShowRow({ show }: { show: Show }) {
         {show.end && <> to {fmt(show.end)}</>}
       </p>
       <div>
-        <h3 className="text-3xl font-bold uppercase leading-tight md:text-5xl">
+        <h3 className="text-3xl font-bold uppercase leading-tight md:text-4xl">
           {show.title}
           {show.sample && (
-            <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-[9px] font-normal tracking-[0.25em] text-foreground/60">
+            <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-xs font-normal tracking-[0.2em] text-foreground/60">
               SAMPLE
             </span>
           )}
@@ -58,11 +59,6 @@ function ShowRow({ show }: { show: Show }) {
   );
 }
 
-/** "Upcoming" and "Past": plain capitals with a rule under them */
-function ListLabel({ children }: { children: string }) {
-  return <h3 data-reveal className="border-b-2 border-line pb-2 text-2xl uppercase md:text-3xl">{children}</h3>;
-}
-
 export default function ShowsPage() {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = shows.filter((s) => (s.end ?? s.start) >= today).sort((a, b) => a.start.localeCompare(b.start));
@@ -80,7 +76,7 @@ export default function ShowsPage() {
   }));
 
   return (
-    <main className="w-full min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
+    <main className="mx-auto w-full max-w-[90rem] min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       {eventsLd.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(eventsLd)} />
       )}
@@ -91,7 +87,7 @@ export default function ShowsPage() {
           <h2 id="timeline" className="sr-only">
             Timeline
           </h2>
-          <ListLabel>Upcoming</ListLabel>
+          <SectionTitle as="h3">Upcoming</SectionTitle>
           {upcoming.length ? (
             <ul>
               {upcoming.map((s) => (
@@ -101,7 +97,12 @@ export default function ShowsPage() {
           ) : (
             // No show booked: a short line and a sign-up, so the empty list still does something (Round 4)
             <div data-reveal className="flex flex-col gap-5 border-b-2 border-line py-7 md:py-9">
-              <p className="text-xl font-bold uppercase leading-tight md:text-2xl">To be announced</p>
+              <p className="text-xl font-bold uppercase leading-tight md:text-2xl">
+                <span className="sr-only">To be announced</span>
+                <span aria-hidden className="soon-glitch glitch-slow" data-text="To be announced">
+                  To be announced
+                </span>
+              </p>
               <div className="w-full max-w-md">
                 <EarlyAccessForm from="shows-upcoming" prompt="Get told first" cta="Haunt me" />
               </div>
@@ -109,7 +110,7 @@ export default function ShowsPage() {
           )}
           {past.length > 0 && (
             <div className="mt-10 md:mt-14">
-              <ListLabel>Past</ListLabel>
+              <SectionTitle as="h3">Past</SectionTitle>
               <ul>
                 {past.map((s) => (
                   <ShowRow key={s.title + s.start} show={s} />
@@ -119,12 +120,10 @@ export default function ShowsPage() {
           )}
         </section>
 
-        {/* On wide screens the sightings sit against the right edge of the page (Archie, 2026-10-31) */}
-        <section aria-labelledby="sightings" data-reveal className="lg:w-full lg:max-w-[34rem] lg:justify-self-center">
-          <h2 id="sightings" className="font-drip text-5xl uppercase leading-none md:text-6xl">
-            Ghost sightings
-          </h2>
-          <p className="mb-4 mt-3 text-sm font-bold md:text-base">Select a ghost and reveal the city</p>
+        {/* On wide screens the sightings sit centered in the right half (Archie, 2026-10-31) */}
+        <section aria-labelledby="sightings" className="lg:w-full lg:max-w-[34rem] lg:justify-self-center">
+          <SectionTitle id="sightings">Ghost sightings</SectionTitle>
+          <p className="mb-4 mt-4 text-sm font-bold md:text-base">Select a ghost and reveal the city</p>
           <SightingsMap sightings={sightings} />
         </section>
       </div>

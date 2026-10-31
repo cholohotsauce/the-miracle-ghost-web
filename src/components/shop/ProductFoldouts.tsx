@@ -9,11 +9,11 @@ export default function ProductFoldouts({ sections }: { sections: InfoSection[] 
     <div className="border-t-2 border-line">
       {sections.map((s) => (
         <details key={s.title} className="foldout group border-b-2 border-line">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-sm font-bold uppercase tracking-[0.15em] [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-sm font-bold uppercase tracking-[0.1em] [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-3">
               {s.title}
               {s.draft && (
-                <span className="border border-foreground/40 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.25em] text-foreground/60">
+                <span className="border border-foreground/40 px-1.5 py-0.5 font-mono text-xs tracking-[0.2em] text-foreground/60">
                   DRAFT
                 </span>
               )}
