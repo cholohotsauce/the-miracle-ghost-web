@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import EarlyAccessForm from "@/components/site/EarlyAccessForm";
 import PageTitle from "@/components/site/PageTitle";
 import SightingsMap from "@/components/shows/SightingsMap";
 import { shows, sightings, type Show } from "@/content/shows";
@@ -86,7 +87,7 @@ export default function ShowsPage() {
       <PageTitle>Shows</PageTitle>
 
       <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-20">
-        <section aria-labelledby="timeline" className="lg:pt-6">
+        <section aria-labelledby="timeline">
           <h2 id="timeline" className="sr-only">
             Timeline
           </h2>
@@ -98,9 +99,13 @@ export default function ShowsPage() {
               ))}
             </ul>
           ) : (
-            <p data-reveal className="border-b-2 border-line py-10 text-3xl font-bold uppercase leading-tight md:py-14 md:text-5xl">
-              To be announced
-            </p>
+            // No show booked: a short line and a sign-up, so the empty list still does something (Round 4)
+            <div data-reveal className="flex flex-col gap-5 border-b-2 border-line py-7 md:py-9">
+              <p className="text-xl font-bold uppercase leading-tight md:text-2xl">To be announced</p>
+              <div className="w-full max-w-md">
+                <EarlyAccessForm from="shows-upcoming" prompt="Get told first" cta="Haunt me" />
+              </div>
+            </div>
           )}
           {past.length > 0 && (
             <div className="mt-10 md:mt-14">
@@ -114,7 +119,8 @@ export default function ShowsPage() {
           )}
         </section>
 
-        <section aria-labelledby="sightings" data-reveal className="lg:pt-14">
+        {/* On wide screens the sightings sit against the right edge of the page (Archie, 2026-10-31) */}
+        <section aria-labelledby="sightings" data-reveal className="lg:w-full lg:max-w-[34rem] lg:justify-self-end">
           <h2 id="sightings" className="font-drip text-5xl uppercase leading-none md:text-6xl">
             Ghost sightings
           </h2>

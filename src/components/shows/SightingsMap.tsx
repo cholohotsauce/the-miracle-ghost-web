@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Sighting } from "@/content/shows";
@@ -18,6 +18,13 @@ const GlobeScene = dynamic(() => import("./GlobeScene"), { ssr: false });
 /** Drag distance, in pixels, before a press counts as a spin instead of a tap */
 const DRAG_START = 4;
 
+type GlowLevel = 1 | 2 | 3;
+const noSubscribe = () => () => {};
+const glowFromAddress = (): GlowLevel => {
+  const g = new URLSearchParams(window.location.search).get("glow");
+  return g === "1" ? 1 : g === "3" ? 3 : 2;
+};
+
 /** Where the globe faces at rest: the Americas, where most sightings are */
 const HOME = facing([25, -80]);
 
@@ -31,6 +38,8 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const box = useRef<HTMLDivElement>(null);
   // The grey stand-in stays until the entrance starts, so the jump back for the spin is never seen
   const shown = ready && arrived;
+  // Glow strength: 2 by default; ?glow=1 or ?glow=3 on the address previews the others (Round 4, for picking)
+  const glow = useSyncExternalStore(noSubscribe, glowFromAddress, () => 2 as GlowLevel);
 
   // Start with the Americas in front, tipped a little toward the north
   const spin = useRef<Spin>({ yaw: HOME.yaw, pitch: REST_PITCH, vYaw: 0, vPitch: 0, dragging: false, target: null });
@@ -138,13 +147,20 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         ref={box}
         role="group"
         aria-label="Globe with the ghost's sightings. Drag to spin it, and pick a ghost to reveal its city."
-        className="relative aspect-square w-full max-w-[34rem] cursor-grab select-none active:cursor-grabbing"
+        className="relative aspect-square w-full max-w-[34rem] cursor-grab select-none active:cursor-grabbing lg:ml-auto"
         style={{ touchAction: "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
+        {/* The neon teal glow that spills from the globe's edge onto the page; it eases off while the globe leans in */}
+        <div
+          aria-hidden
+          className={`globe-glow globe-glow-${glow} absolute inset-0 transition-opacity duration-700 ${
+            shown && open === null ? "opacity-100" : "opacity-0"
+          }`}
+        />
         {/* A soft shadow on the "floor", so the globe floats over the page */}
         <div
           aria-hidden
@@ -172,7 +188,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         </div>
       </div>
 
-      <p className="mt-3 text-sm font-bold md:text-base">Only the &lsquo;known&rsquo; world is shown here.</p>
+      <p className="mt-3 text-sm font-bold md:text-base lg:ml-auto lg:max-w-[34rem]">Only the &lsquo;known&rsquo; world is shown here.</p>
 
       <AnimatePresence>
         {active && (

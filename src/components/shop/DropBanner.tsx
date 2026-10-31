@@ -5,7 +5,7 @@ import Countdown from "./Countdown";
 /**
  * The black banner at the top of the Shop (Aes's mockup, 2026-10-15):
  * drop-alert sign-up on the left, NEXT DROP countdown on the right.
- * With no drop scheduled, the countdown makes way for "Soon".
+ * With no drop scheduled (content/drops.ts), the countdown makes way for a glitching "Soon." like the teaser's.
  * Aes asked for it 30% shorter at the same width (2026-10-19), then another 20% shorter the same day:
  * tighter padding and gaps, smaller type.
  */
@@ -38,7 +38,15 @@ export default function DropBanner({ drop }: { drop: NextDrop | null }) {
               labelClassName="font-mono text-[10px] tracking-[0.2em] md:text-xs"
             />
           ) : (
-            <p className="mt-1 text-3xl font-black uppercase text-[var(--color-neon-green)] md:mt-1.5 md:text-4xl">Soon</p>
+            // The teaser's SOON: it glitches into pink and teal slices now and then, and the green dot breathes
+            <p aria-label="Soon" className="mt-1 text-3xl font-black uppercase text-[var(--color-neon-green)] md:mt-1.5 md:text-4xl">
+              <span aria-hidden>
+                <span className="soon-glitch" data-text="Soon">
+                  Soon
+                </span>
+                <span className="teaser-dot">.</span>
+              </span>
+            </p>
           )}
         </div>
       </div>

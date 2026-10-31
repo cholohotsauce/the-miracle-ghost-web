@@ -46,6 +46,7 @@ export default function ContactPage() {
             target="_blank"
             rel="noreferrer"
             aria-label={`Open @${INSTAGRAM_HANDLE} on Instagram`}
+            data-magnetic
             className="grid size-14 shrink-0 place-items-center rounded-full border-2 border-foreground text-2xl transition-colors hover:bg-foreground hover:text-background"
           >
             ↗

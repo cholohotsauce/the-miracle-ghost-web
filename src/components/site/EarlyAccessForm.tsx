@@ -97,6 +97,7 @@ export default function EarlyAccessForm({
         <input name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-px w-px opacity-0" />
         <button
           type="submit"
+          data-magnetic
           disabled={status === "sending"}
           className={`shrink-0 rounded-full px-5 uppercase transition disabled:opacity-40 ${
             banner

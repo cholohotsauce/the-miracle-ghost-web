@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import ShopifyBuyButton from "@/components/ShopifyBuyButton";
 import Countdown from "@/components/shop/Countdown";
 import ProductCard from "@/components/shop/ProductCard";
+import ProductFoldouts from "@/components/shop/ProductFoldouts";
 import ProductGallery from "@/components/shop/ProductGallery";
 import ProductViewStat from "@/components/shop/ProductViewStat";
 import SoldOutStamp from "@/components/shop/SoldOutStamp";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
 import TransitionLink from "@/components/site/TransitionLink";
 import { editionFor, lockedUntil } from "@/content/drops";
+import { CARE, CERTIFICATE, SHIPPING } from "@/content/productInfo";
 import { categoryOf } from "@/content/shopCategories";
 import { formatPrice, getProduct, getProducts } from "@/lib/shopify";
 import { jsonLd, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -98,6 +100,12 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
               <p className="font-mono text-xs uppercase tracking-[0.25em] text-foreground/60">{product.productType}</p>
             )}
             <h1 className="mt-2 text-4xl font-black uppercase leading-[0.95] tracking-wide md:text-6xl">{product.title}</h1>
+            {edition && (
+              // The edition, big and outlined: "1 OF 1" sells an original
+              <p className="mt-4 text-[clamp(2.5rem,7vw,4.5rem)] font-black uppercase leading-none text-transparent [-webkit-text-stroke:2px_var(--foreground)]">
+                {edition}
+              </p>
+            )}
           </div>
 
           <dl className="grid grid-cols-2 gap-px border-2 border-line bg-line font-mono text-sm">
@@ -131,6 +139,8 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
               <EarlyAccessForm from={`sold-${product.handle}`} prompt="Don't miss the next one." />
             </div>
           )}
+
+          <ProductFoldouts sections={category.slug === "artwork" ? [SHIPPING, CERTIFICATE] : [SHIPPING, CARE]} />
         </section>
       </div>
 
