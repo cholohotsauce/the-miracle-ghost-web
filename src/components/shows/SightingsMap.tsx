@@ -22,7 +22,7 @@ type GlowLevel = 1 | 2 | 3;
 const noSubscribe = () => () => {};
 const glowFromAddress = (): GlowLevel => {
   const g = new URLSearchParams(window.location.search).get("glow");
-  return g === "1" ? 1 : g === "3" ? 3 : 2;
+  return g === "1" ? 1 : g === "2" ? 2 : 3;
 };
 
 /** Where the globe faces at rest: the Americas, where most sightings are */
@@ -38,8 +38,8 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const box = useRef<HTMLDivElement>(null);
   // The grey stand-in stays until the entrance starts, so the jump back for the spin is never seen
   const shown = ready && arrived;
-  // Glow strength: 2 by default; ?glow=1 or ?glow=3 on the address previews the others (Round 4, for picking)
-  const glow = useSyncExternalStore(noSubscribe, glowFromAddress, () => 2 as GlowLevel);
+  // Glow strength: 3 by default (Archie's pick); ?glow=1 or ?glow=2 on the address still shows the softer ones
+  const glow = useSyncExternalStore(noSubscribe, glowFromAddress, () => 3 as GlowLevel);
 
   // Start with the Americas in front, tipped a little toward the north
   const spin = useRef<Spin>({ yaw: HOME.yaw, pitch: REST_PITCH, vYaw: 0, vPitch: 0, dragging: false, target: null });
