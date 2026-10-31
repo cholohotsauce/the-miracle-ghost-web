@@ -120,7 +120,7 @@ export default function ShowsPage() {
         </section>
 
         {/* On wide screens the sightings sit against the right edge of the page (Archie, 2026-10-31) */}
-        <section aria-labelledby="sightings" data-reveal className="lg:w-full lg:max-w-[34rem] lg:justify-self-end">
+        <section aria-labelledby="sightings" data-reveal className="lg:w-full lg:max-w-[34rem] lg:justify-self-center">
           <h2 id="sightings" className="font-drip text-5xl uppercase leading-none md:text-6xl">
             Ghost sightings
           </h2>
