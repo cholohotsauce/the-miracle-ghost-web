@@ -17,7 +17,6 @@ export const CONTACT_TOPICS = [
     placeholder:
       "Please provide a brief overview of your project, including your estimated budget, preferred timeline, dimensions, and any other relevant details.",
     details: [
-      { id: "budget", label: "Budget", options: ["Under $1K", "$1K – $5K", "$5K+", "Not sure"] },
       { id: "timeline", label: "Timeline", placeholder: "When do you need it?" },
       { id: "place", label: "Where will it live?", placeholder: "Wall, canvas, object, city…" },
     ],
