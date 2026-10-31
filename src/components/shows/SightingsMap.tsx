@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Sighting } from "@/content/shows";
-import { MAX_PITCH, REST_PITCH, facing, type PinGroup, type Spin } from "./globeMath";
+import { ENTRANCE_SPEED, ENTRANCE_TURN, MAX_PITCH, REST_PITCH, facing, type PinGroup, type Spin } from "./globeMath";
 
 /**
  * Ghost sightings on a 3D globe (Aes, 2026-10-30), replacing the flat map.
  * It turns very slowly on its own; drag it to spin it, tap a ghost to bring its city to the front
  * and open its card. The 3D part loads after the page, behind a plain grey disc.
+ * The first time it comes into view it arrives spinning fast, slows into place, and the ghosts pop up one by one.
  */
 
 const GlobeScene = dynamic(() => import("./GlobeScene"), { ssr: false });
@@ -17,14 +18,22 @@ const GlobeScene = dynamic(() => import("./GlobeScene"), { ssr: false });
 /** Drag distance, in pixels, before a press counts as a spin instead of a tap */
 const DRAG_START = 4;
 
+/** Where the globe faces at rest: the Americas, where most sightings are */
+const HOME = facing([25, -80]);
+
 export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const reducedMotion = useReducedMotion() ?? false;
   const [open, setOpen] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const onReady = useCallback(() => setReady(true), []);
+  // The entrance plays once, when the globe has loaded and is on screen
+  const [arrived, setArrived] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  // The grey stand-in stays until the entrance starts, so the jump back for the spin is never seen
+  const shown = ready && arrived;
 
-  // Start with the Americas in front, where most sightings are, tipped a little toward the north
-  const spin = useRef<Spin>({ yaw: facing([25, -80]).yaw, pitch: REST_PITCH, vYaw: 0, vPitch: 0, dragging: false, target: null });
+  // Start with the Americas in front, tipped a little toward the north
+  const spin = useRef<Spin>({ yaw: HOME.yaw, pitch: REST_PITCH, vYaw: 0, vPitch: 0, dragging: false, target: null });
 
   // One pin spot per city; ghosts in the same city stand side by side
   const groups = useMemo(() => {
@@ -36,6 +45,27 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
     });
     return [...byCity.values()];
   }, [sightings]);
+
+  useEffect(() => {
+    if (!ready || arrived || !box.current) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        const s = spin.current;
+        if (!reducedMotion && !s.dragging && !s.target) {
+          // Start a little behind, so the fast spin coasts to a stop with the Americas in front
+          s.yaw = HOME.yaw - ENTRANCE_TURN;
+          s.pitch = REST_PITCH;
+          s.vYaw = ENTRANCE_SPEED;
+        }
+        setArrived(true);
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(box.current);
+    return () => io.disconnect();
+  }, [ready, arrived, reducedMotion]);
 
   const pick = useCallback(
     (i: number | null) => {
@@ -105,6 +135,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   return (
     <div>
       <div
+        ref={box}
         role="group"
         aria-label="Globe with the ghost's sightings. Drag to spin it, and pick a ghost to reveal its city."
         className="relative aspect-square w-full max-w-[34rem] cursor-grab select-none active:cursor-grabbing"
@@ -114,15 +145,30 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
+        {/* A soft shadow on the "floor", so the globe floats over the page */}
+        <div
+          aria-hidden
+          className={`absolute bottom-[0.5%] left-1/2 h-[5%] w-[58%] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgb(0_0_0/0.22),transparent)] transition-opacity duration-700 ${
+            shown ? "opacity-100" : "opacity-0"
+          }`}
+        />
         {/* Stand-in while the 3D globe loads */}
         <div
           aria-hidden
           className={`absolute inset-[6.5%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#c4c7cc,#8e939b_60%,#6f747c)] transition-opacity duration-700 ${
-            ready ? "opacity-0" : "opacity-100"
+            shown ? "opacity-0" : "opacity-100"
           }`}
         />
-        <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`}>
-          <GlobeScene spin={spin} groups={groups} open={open} onPick={pick} reducedMotion={reducedMotion} onReady={onReady} />
+        <div className={`absolute inset-0 transition-opacity duration-700 ${shown ? "opacity-100" : "opacity-0"}`}>
+          <GlobeScene
+            spin={spin}
+            groups={groups}
+            open={open}
+            onPick={pick}
+            reducedMotion={reducedMotion}
+            arrived={arrived}
+            onReady={onReady}
+          />
         </div>
       </div>
 

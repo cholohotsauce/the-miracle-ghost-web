@@ -33,6 +33,15 @@ export const facing = ([lat, lng]: [number, number]) => ({
   pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, rad(lat))),
 });
 
+/** Spin speed the globe arrives with, in radians per second; it slows into the gentle turn by itself */
+export const ENTRANCE_SPEED = 6;
+/** How far that arrival turns the globe before it settles (the coast-down in stepSpin covers about this much) */
+export const ENTRANCE_TURN = (ENTRANCE_SPEED - AUTO_SPEED) / 2.5;
+
+/** Camera distance at rest, and when a ghost is open and the globe leans in */
+export const CAMERA_Z = 4.3;
+export const CAMERA_Z_OPEN = 3.9;
+
 /** Shortest way around from one angle to another */
 export const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
