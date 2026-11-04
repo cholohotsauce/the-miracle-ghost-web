@@ -34,7 +34,7 @@ const label = "flex justify-between font-mono text-xs uppercase tracking-[0.2em]
 const pill =
   "rounded-full border-2 border-foreground px-4 py-2.5 font-mono text-xs uppercase tracking-[0.1em] transition-colors md:text-sm";
 
-/** "01  What's this about?" — the numbered heading over each part of the form */
+/** "01  Select a Topic" — the numbered heading over each part of the form */
 function Step({ n, children }: { n: string; children: ReactNode }) {
   return (
     <span data-scramble className="mb-4 mt-12 flex items-baseline gap-3 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60 first:mt-0 md:mt-14 md:text-sm">
@@ -176,7 +176,7 @@ export default function ContactForm() {
     <form onSubmit={submit} noValidate className="mt-12 flex flex-col md:mt-14">
       <fieldset>
         <legend className="contents">
-          <Step n="01">What&apos;s this about?</Step>
+          <Step n="01">Select a Topic</Step>
         </legend>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
           {CONTACT_TOPICS.map((t, i) => {
@@ -208,7 +208,7 @@ export default function ContactForm() {
                     0{i + 1}
                   </span>
                   <span className="mt-4 block">
-                    <span className="block text-lg uppercase leading-none md:text-[1.35rem]">{t.label}</span>
+                    <span className="block text-[min(1rem,4.1vw)] uppercase leading-none md:text-[1.35rem]">{t.label}</span>
                     <span className={`mt-1.5 block text-sm leading-tight ${on ? "opacity-75" : "opacity-60"}`}>{t.hint}</span>
                   </span>
                 </span>
@@ -338,7 +338,8 @@ export default function ContactForm() {
         </p>
       )}
 
-      <div className="mt-8 flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+      {/* Just the button: Aes took the "Aes reads every one." line off (2026-11-04) */}
+      <div className="mt-8 flex">
         <button
           type="submit"
           disabled={status === "sending"}
@@ -358,7 +359,6 @@ export default function ContactForm() {
             <span aria-hidden>→</span>
           )}
         </button>
-        <p className="text-sm text-foreground/60">Aes reads every one.</p>
       </div>
     </form>
   );

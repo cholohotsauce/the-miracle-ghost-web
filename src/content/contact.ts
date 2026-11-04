@@ -7,12 +7,15 @@ export type ContactDetail = {
   options?: readonly string[];
 };
 
-/** Contact form topics, in the order the cards appear. Each topic asks only what it needs. */
+/**
+ * Contact form topics, in the order the cards appear. Each topic asks only what it needs.
+ * Labels and the short line under each are Aes's words (2026-11-04).
+ */
 export const CONTACT_TOPICS = [
   {
     id: "commission",
     label: "Commissions",
-    hint: "A piece made just for you",
+    hint: "New work on request",
     // Aes's text for the Message box (2026-10-30)
     placeholder:
       "Please provide a brief overview of your project, including your estimated budget, preferred timeline, dimensions, and any other relevant details.",
@@ -23,15 +26,15 @@ export const CONTACT_TOPICS = [
   },
   {
     id: "collab",
-    label: "Collab",
-    hint: "Brands, artists, projects",
+    label: "Collaborations",
+    hint: "Creative partnerships",
     placeholder: "Tell the ghost the idea.",
     details: [{ id: "brand", label: "Brand or project", placeholder: "Who are you working with?" }],
   },
   {
     id: "press",
     label: "Press",
-    hint: "Interviews and features",
+    hint: "Media requests",
     placeholder: "What's the story, and what do you need from Aes?",
     details: [
       { id: "outlet", label: "Outlet", placeholder: "Magazine, site, show…" },
@@ -41,7 +44,7 @@ export const CONTACT_TOPICS = [
   {
     id: "other",
     label: "Other",
-    hint: "Anything else",
+    hint: "Additional topic",
     placeholder: "Say what's on your mind.",
     details: [],
   },

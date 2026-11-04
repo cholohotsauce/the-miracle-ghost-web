@@ -154,11 +154,12 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        {/* The neon teal glow that spills from the globe's edge onto the page; it eases off while the globe leans in */}
+        {/* The neon teal glow that spills from the globe's edge onto the page. It stays on while a ghost is open
+            (Aes, 2026-11-04: it used to fade out and leave a thin line around the globe). */}
         <div
           aria-hidden
           className={`globe-glow globe-glow-${glow} absolute inset-0 transition-opacity duration-700 ${
-            shown && open === null ? "opacity-100" : "opacity-0"
+            shown ? "opacity-100" : "opacity-0"
           }`}
         />
         {/* A soft shadow on the "floor", so the globe floats over the page */}
@@ -188,7 +189,19 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
         </div>
       </div>
 
-      <p className="mt-3 text-sm font-bold md:text-base">Only the &lsquo;known&rsquo; world is shown here.</p>
+      {/* Light grey so it stays in the background (Aes, 2026-11-04) */}
+      <p className="mt-3 text-sm font-bold text-foreground/40 md:text-base">Only the &lsquo;known&rsquo; world is shown here.</p>
+
+      {/* The ghosts are 3D shapes inside the canvas, so keyboards and screen readers get a plain list of them */}
+      <ul className="sr-only">
+        {sightings.map((s, i) => (
+          <li key={i}>
+            <button type="button" aria-pressed={open === i} onClick={() => pick(i)}>
+              {s.name ? `${s.name}, ${s.city}` : s.city}
+            </button>
+          </li>
+        ))}
+      </ul>
 
       <AnimatePresence>
         {active && (
@@ -200,16 +213,22 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             className="mt-4 flex items-start justify-between gap-4 border-2 border-line bg-background p-4 shadow-[6px_6px_0_var(--color-neon-green)]"
           >
             <div>
-              <p className="font-drip text-2xl uppercase leading-none">{active.name}</p>
-              <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-foreground/70">
-                {active.kind ? `${active.kind} · ` : ""}
-                {active.city}
-                {active.year ? ` · ${active.year}` : ""}
-                {active.status ? ` · ${active.status === "running" ? "still running" : "buffed"}` : ""}
-              </p>
+              <p className="font-drip text-2xl uppercase leading-none">{active.name ?? active.city}</p>
+              {(active.name || active.kind || active.year || active.status) && (
+                <p className="mt-2 font-mono text-xs uppercase tracking-[0.2em] text-foreground/70">
+                  {[
+                    active.kind,
+                    active.name ? active.city : null,
+                    active.year,
+                    active.status ? (active.status === "running" ? "still running" : "buffed") : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
               {active.photo && (
                 // eslint-disable-next-line @next/next/no-img-element -- small optional photo from /public
-                <img src={active.photo} alt={active.name} className="mt-3 max-h-64 w-auto border-2 border-line" />
+                <img src={active.photo} alt={active.name ?? active.city} className="mt-3 max-h-64 w-auto border-2 border-line" />
               )}
             </div>
             <button
