@@ -306,67 +306,6 @@ body {
   }
 }
 
-/* Globe ghosts (Round 3 polish): each pops up out of the ground with a little bounce after the entrance spin.
-   It animates scale and translate, not transform, so the open ghost's scale(1.2) keeps working,
-   and "backwards" lets go when it ends, so hover still lifts the ghost. */
-.ghost-pin-pop {
-  animation: ghost-pin-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
-}
-
-@keyframes ghost-pin-pop {
-  from {
-    opacity: 0;
-    scale: 0.2;
-    translate: 0 40%;
-  }
-  60% {
-    opacity: 1;
-  }
-  to {
-    opacity: 1;
-    scale: 1;
-    translate: 0 0;
-  }
-}
-
-/* The open ghost's pink ping: a flat ring on the ground that spreads out and fades, again and again */
-.ghost-pin-pulse {
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  width: 26px;
-  height: 26px;
-  margin-left: -13px;
-  border: 2px solid var(--color-neon-pink);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: -1;
-  animation: ghost-pin-pulse 1.6s ease-out infinite;
-}
-
-@keyframes ghost-pin-pulse {
-  from {
-    transform: scale(0.4, 0.18);
-    opacity: 1;
-  }
-  to {
-    transform: scale(3, 1.35);
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ghost-pin-pop {
-    animation: none;
-  }
-
-  .ghost-pin-pulse {
-    animation: none;
-    transform: scale(1.6, 0.7);
-    opacity: 0.8;
-  }
-}
-
 /* The globe's neon teal glow (Round 4). The globe's edge sits at about 89% of the box's half-width,
    so the light starts just inside it and fades out into the page. 1 soft, 2 neon (default), 3 bloom. */
 .globe-glow {
@@ -426,10 +365,12 @@ body {
   }
 }
 
-/* Photos behind the Shop's doors: dimmed so the word stays loud, a little brighter on hover.
+/* Photos behind the Shop's doors: dimmed and in grey so the word stays loud, a little brighter on hover.
+   They stay grey on hover too, so green is the only color the doors light up in (Aes, 2026-11-04).
    (Photos are only "loaded" once data-loaded is set, see .photo-in.) */
 .photo-door-dark[data-loaded] {
   opacity: 0.38;
+  filter: grayscale(1);
 }
 
 .group:hover .photo-door-dark[data-loaded] {
@@ -443,7 +384,6 @@ body {
 
 .group:hover .photo-door-light[data-loaded] {
   opacity: 0.3;
-  filter: grayscale(0);
 }
 
 /* Felipe Pantone nod (Round 4): on hover, a card's hard shadow runs through green, teal, and pink once,
@@ -514,39 +454,12 @@ body {
  * so the same bad-signal feeling shows up in a few more quiet places.
  */
 
-/* Shop drop banner: faint scanlines, with a soft bright band rolling down now and then like a TV losing hold */
-.tv-scanlines {
-  background: repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 3px);
-}
-
-.tv-scanlines::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 40%;
-  background: linear-gradient(to bottom, transparent, rgb(255 255 255 / 0.05), transparent);
-  translate: 0 -100%;
-  animation: tv-roll 9s linear infinite;
-}
-
-@keyframes tv-roll {
-  0%, 55% { translate: 0 -100%; }
-  100% { translate: 0 260%; }
-}
-
-/* The banner's ghost: dim, floating, and fading almost out like the teaser's, with a tiny twitch */
+/* The banner's ghost peeks up from the bottom edge, bobbing a little, with a tiny twitch now and then */
 .banner-ghost {
-  opacity: 0.32;
+  opacity: 0.92;
   animation:
     banner-haunt 8s ease-in-out infinite,
     teaser-float 4s ease-in-out infinite;
-}
-
-@media (width >= 48rem) {
-  .banner-ghost {
-    opacity: 0.5;
-  }
 }
 
 @keyframes banner-haunt {
@@ -602,7 +515,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tv-scanlines::after,
   .banner-ghost,
   .banner-ticker,
   .send-sweep,

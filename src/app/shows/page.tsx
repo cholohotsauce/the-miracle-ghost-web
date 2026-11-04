@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import EarlyAccessForm from "@/components/site/EarlyAccessForm";
 import PageTitle from "@/components/site/PageTitle";
 import SectionTitle from "@/components/site/SectionTitle";
+import ShowVideo from "@/components/shows/ShowVideo";
 import SightingsMap from "@/components/shows/SightingsMap";
 import { shows, sightings, type Show } from "@/content/shows";
 import { jsonLd } from "@/lib/site";
@@ -31,8 +32,15 @@ function ShowRow({ show }: { show: Show }) {
       </p>
       <div>
         <h3 className="text-3xl font-bold uppercase leading-tight md:text-4xl">
-          {/* On hover the title fills with green from left to right (globals.css, Round 5b) */}
-          <span className="show-fill">{show.title}</span>
+          {/* On hover the title fills with green from left to right (globals.css, Round 5b).
+              With a recap video, the title plays it right on the site (Aes, 2026-11-04). */}
+          {show.video ? (
+            <ShowVideo src={show.video} title={show.title}>
+              <span className="show-fill">{show.title}</span>
+            </ShowVideo>
+          ) : (
+            <span className="show-fill">{show.title}</span>
+          )}
           {show.sample && (
             <span className="ml-2 inline-block -translate-y-1 border border-foreground/40 px-1.5 py-0.5 align-middle font-mono text-xs font-normal tracking-[0.2em] text-foreground/60">
               SAMPLE
@@ -96,16 +104,12 @@ export default function ShowsPage() {
               ))}
             </ul>
           ) : (
-            // No show booked: a short line and a sign-up, so the empty list still does something (Round 4)
+            // No show booked: a short line and a sign-up, so the empty list still does something (Round 4).
+            // Aes, 2026-11-04: no glitch on "To be announced", and the sign-up says "Join the Ghost List" / "Add me".
             <div data-reveal className="flex flex-col gap-5 border-b-2 border-line py-7 md:py-9">
-              <p className="text-xl font-bold uppercase leading-tight md:text-2xl">
-                <span className="sr-only">To be announced</span>
-                <span aria-hidden className="soon-glitch glitch-slow" data-text="To be announced">
-                  To be announced
-                </span>
-              </p>
+              <p className="text-xl font-bold uppercase leading-tight md:text-2xl">To be announced</p>
               <div className="w-full max-w-md">
-                <EarlyAccessForm from="shows-upcoming" prompt="Get told first" cta="Haunt me" />
+                <EarlyAccessForm from="shows-upcoming" prompt="Join the Ghost List" cta="Add me" />
               </div>
             </div>
           )}

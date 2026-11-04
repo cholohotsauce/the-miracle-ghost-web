@@ -18,21 +18,23 @@ export default function ContactPage() {
   return (
     <main className="mx-auto w-full max-w-[90rem] min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
       <PageTitle>Contact</PageTitle>
-      <div className="mx-auto max-w-[58rem]">
-        <p data-reveal className="max-w-[34rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
-          Commissions, collabs, press, or anything else. Pick a topic and tell the ghost.
+      {/* Everything lines up on the left, under the title, instead of sitting centered (Aes, 2026-11-04) */}
+      <div className="max-w-[58rem] text-left">
+        <p data-reveal className="max-w-[40rem] text-[clamp(1.1rem,2.4vw,1.4rem)] leading-snug">
+          For commissions, collaborations, press inquiries and other requests, please select a topic and provide the details below.
         </p>
 
         <ContactForm />
 
         <footer data-reveal className="mt-20 flex flex-wrap items-end justify-between gap-4 border-t-2 border-foreground pt-7">
           <div className="min-w-0">
-            <p data-scramble className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Or DM the ghost</p>
+            <p data-scramble className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">Get in touch on Instagram</p>
+            {/* 20% smaller than before (Aes, 2026-11-04) */}
             <a
               href={INSTAGRAM_URL}
               target="_blank"
               rel="noreferrer"
-              className="group relative mt-2 inline-block max-w-full font-drip text-[clamp(1.5rem,6.2vw,3.2rem)] uppercase leading-none [overflow-wrap:anywhere]"
+              className="group relative mt-2 inline-block max-w-full font-drip text-[clamp(1.2rem,4.96vw,2.56rem)] uppercase leading-none [overflow-wrap:anywhere]"
             >
               @{INSTAGRAM_HANDLE}
               <span

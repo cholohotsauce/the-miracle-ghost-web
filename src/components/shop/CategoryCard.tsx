@@ -9,6 +9,8 @@ import type { ShopCategory } from "@/content/shopCategories";
 /**
  * One of the two big doors on the Shop page: 01 MERCH (black) and 02 ARTWORK (white).
  * A photo of a piece from behind the door sits dimmed under the word, and comes up a little on hover.
+ * Aes, 2026-11-04: rounded corners like the Contact topic cards, and only the green shadow on hover
+ * (no more pink and teal running through it).
  */
 export default function CategoryCard({ category, index, photo }: { category: ShopCategory; index: number; photo?: ProductImage }) {
   const dark = index % 2 === 0;
@@ -26,7 +28,7 @@ export default function CategoryCard({ category, index, photo }: { category: Sho
       onFocus={(e) => look(e.currentTarget)}
       onPointerLeave={() => emitGhost({ type: "look-away" })}
       onBlur={() => emitGhost({ type: "look-away" })}
-      className={`holo-shadow group relative flex aspect-[9/4] items-center justify-center overflow-hidden border-2 border-line transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_var(--color-neon-green)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground ${
+      className={`group relative flex aspect-[9/4] items-center justify-center overflow-hidden rounded-[20px] border-2 border-line transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_var(--color-neon-green)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground ${
         dark ? "bg-foreground text-background" : "bg-background text-foreground"
       }`}
     >

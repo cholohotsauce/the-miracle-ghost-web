@@ -28,7 +28,8 @@ export default function SiteFooter() {
       <div data-reveal className="mx-auto max-w-[84rem] border-t-2 border-line pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-8 md:pb-10 md:pl-40 md:pt-10">
         <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-12">
           <div className="w-full max-w-md">
-            <EarlyAccessForm from="footer" prompt="Drop alerts. The ghost tells you first." cta="Haunt me" />
+            {/* Aes, 2026-11-04: the same words as the Shows sign-up */}
+            <EarlyAccessForm from="footer" prompt="Join the Ghost List" cta="Add me" />
           </div>
           {/* Contact already ends with the big Instagram strip */}
           {pathname !== "/contact" && (

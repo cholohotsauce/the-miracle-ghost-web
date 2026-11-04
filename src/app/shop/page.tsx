@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import CategoryCard from "@/components/shop/CategoryCard";
 import DropBanner from "@/components/shop/DropBanner";
-import ProductCard from "@/components/shop/ProductCard";
 import PageTitle from "@/components/site/PageTitle";
-import SectionTitle from "@/components/site/SectionTitle";
-import { activeNextDrop, editionFor, lockedUntil } from "@/content/drops";
+import { activeNextDrop } from "@/content/drops";
 import { SHOP_CATEGORIES, inCategory } from "@/content/shopCategories";
-import { formatPrice, getProducts } from "@/lib/shopify";
+import { getProducts } from "@/lib/shopify";
 
 // Re-check once a minute so the banner switches to "Soon" when a countdown runs out
 export const revalidate = 60;
@@ -19,11 +17,11 @@ export const metadata: Metadata = {
 
 /**
  * Aes's Shop (mockup 2026-10-15): drop banner, then one door for Merch and one for Artwork, as wide as the banner.
- * Each door shows a photo of a piece behind it, and the newest pieces sit underneath (Round 4 polish, 2026-10-31).
+ * Each door shows a photo of a piece behind it (Round 4 polish, 2026-10-31).
+ * Aes took the "Latest off the wall" row off on 2026-11-04.
  */
 export default async function ShopPage() {
   const products = await getProducts(); // newest first
-  const latest = products.slice(0, 4);
 
   return (
     <main className="mx-auto w-full max-w-[90rem] min-h-[100dvh] bg-background text-foreground pt-32 md:pt-36 px-5 md:px-6 lg:px-12 pb-page">
@@ -37,25 +35,6 @@ export default async function ShopPage() {
         ))}
       </ul>
 
-      {latest.length > 0 && (
-        <section aria-labelledby="latest" className="mt-20 md:mt-28">
-          <SectionTitle id="latest" className="mb-8">
-            Latest off the wall
-          </SectionTitle>
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-10 lg:grid-cols-4">
-            {latest.map((p) => (
-              <li key={p.id} data-reveal="item">
-                <ProductCard
-                  product={p}
-                  price={formatPrice(p.price)}
-                  edition={editionFor(p.handle, p.productType)}
-                  lockedUntil={lockedUntil(p.handle)}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </main>
   );
 }
