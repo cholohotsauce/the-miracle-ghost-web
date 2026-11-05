@@ -25,8 +25,10 @@ const fmt = (iso: string) =>
 // with the gallery and city in small capitals under it, and a rule under every show
 function ShowRow({ show }: { show: Show }) {
   return (
-    <li data-reveal="item" className="show-row group grid grid-cols-[5.5rem_minmax(0,1fr)] items-baseline gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
-      <p className="text-xs font-bold uppercase md:text-sm">
+    <li data-reveal="item" className="show-row group grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-x-4 border-b-2 border-line py-6 md:grid-cols-[8rem_minmax(0,1fr)] md:gap-x-6 md:py-8">
+      {/* Lined up with the title by padding, not by baseline: on iPhone Safari the play button's baseline
+          lifted the title up through the line above it (Aes, 2026-11-05) */}
+      <p className="pt-4 text-xs font-bold uppercase md:pt-5 md:text-sm">
         {fmt(show.start)}
         {show.end && <> to {fmt(show.end)}</>}
       </p>
