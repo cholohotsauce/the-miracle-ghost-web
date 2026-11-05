@@ -2,14 +2,14 @@
  * Early access sign-ups: people who want to hear about the next drop.
  *
  * Where the email goes, in order of preference:
- *   1. Shopify, as a customer subscribed to email marketing, when SHOPIFY_ADMIN_TOKEN is set.
- *      Then Aes can announce drops with Shopify Email. The token comes from a custom app in
- *      Shopify admin → Settings → Apps → Develop apps, with the read_customers and write_customers scopes.
+ *   1. Shopify, as a customer subscribed to email marketing, when Admin API access is set up
+ *      (see src/lib/shopifyAdmin.ts). Then Aes can announce drops with Shopify Email.
  *   2. Otherwise, an email to Aes's inbox (see src/lib/mail.ts), one per sign-up.
  */
 
 import { mailAes, mailResponse } from "@/lib/mail";
 import { SHOP_DOMAIN } from "@/lib/shopify";
+import { getAdminToken } from "@/lib/shopifyAdmin";
 import { clean, isEmail, looksLikeBot, rateLimited } from "@/lib/spam";
 
 const ADMIN_API_VERSION = "2025-10";
@@ -54,15 +54,15 @@ export async function POST(request: Request) {
   if (!isEmail(email)) return Response.json({ error: "bad_email" }, { status: 400 });
   if (rateLimited(request, "early-access")) return Response.json({ error: "slow_down" }, { status: 429 });
 
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
-  if (token) {
-    try {
+  try {
+    const token = await getAdminToken();
+    if (token) {
       await subscribeInShopify(email, token);
       return Response.json({ ok: true });
-    } catch (err) {
-      // Fall through to email so the sign-up is never lost
-      console.error("[early-access] Shopify failed", err);
     }
+  } catch (err) {
+    // Fall through to email so the sign-up is never lost
+    console.error("[early-access] Shopify failed", err);
   }
 
   return mailResponse(
