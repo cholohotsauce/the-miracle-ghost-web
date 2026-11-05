@@ -527,20 +527,47 @@ body {
  * Round 5b (Archie, 2026-10-31): more small touches in the same bad-TV spirit.
  */
 
-/* Menu: hovering a link makes its letters flicker on like a neon sign warming up */
+/*
+ * Menu (Aes, 2026-11-05): no more green flicker. Hovering a word makes it bounce bigger while the other
+ * words step back. It also floats up off the page with a soft shadow under it, and when clicked it squeezes
+ * and drops back down, like pressing a sticker.
+ */
+.nav-word {
+  transform-origin: 50% 80%;
+  transition:
+    scale 0.45s cubic-bezier(0.34, 1.7, 0.5, 1),
+    translate 0.45s cubic-bezier(0.34, 1.7, 0.5, 1),
+    opacity 0.3s ease,
+    text-shadow 0.3s ease;
+}
+
 @media (hover: hover) {
-  .group:hover > .nav-neon {
-    animation: nav-neon 0.55s steps(1) both;
+  nav ul:has(> li > a:hover) .nav-word {
+    opacity: 0.4;
+    scale: 0.94;
+  }
+
+  nav ul:has(> li > a:hover) a:hover .nav-word {
+    opacity: 1;
+    scale: 1.16;
+  }
+
+  nav ul a:hover .nav-word {
+    translate: 0 -5px;
+    text-shadow: 0 9px 10px rgb(0 0 0 / 0.18);
   }
 }
 
-@keyframes nav-neon {
-  0% { opacity: 0.35; text-shadow: none; }
-  12% { opacity: 1; text-shadow: 0 0 10px rgb(57 255 20 / 0.7); }
-  20% { opacity: 0.45; text-shadow: none; }
-  34% { opacity: 1; text-shadow: 0 0 12px rgb(57 255 20 / 0.75); }
-  44% { opacity: 0.7; text-shadow: none; }
-  60%, 100% { opacity: 1; text-shadow: 0 0 6px rgb(57 255 20 / 0.35); }
+nav ul a:active .nav-word,
+nav ul:has(> li > a:hover) a:active .nav-word {
+  opacity: 1;
+  scale: 1.04;
+  transition-duration: 0.12s;
+}
+
+nav ul a:active .nav-word {
+  translate: 0 0;
+  text-shadow: 0 2px 2px rgb(0 0 0 / 0.2);
 }
 
 /* Shows: each row slides in from the left with its date, instead of rising */
@@ -603,7 +630,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .group:hover > .nav-neon,
   .err-glitch,
   .cart-bounce {
     animation: none;
@@ -611,6 +637,10 @@ body {
 
   .js-reveal .show-row[data-reveal] {
     translate: none;
+  }
+
+  .nav-word {
+    transition: opacity 0.3s ease;
   }
 }
 

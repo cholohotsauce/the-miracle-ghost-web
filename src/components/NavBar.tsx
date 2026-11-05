@@ -47,8 +47,8 @@ export default function NavBar() {
                   aria-current={active ? "page" : undefined}
                   className="group relative block px-1 py-1 font-drip text-[clamp(1.35rem,5.6vw,2.6rem)] uppercase leading-none text-foreground"
                 >
-                  {/* On hover the letters flicker on like a neon sign warming up (globals.css, Round 5b) */}
-                  <span className="nav-neon inline-block transition-transform duration-300 group-hover:translate-y-0.5 group-active:translate-y-1">
+                  {/* On hover the word bounces bigger while the others step back, and squeezes when clicked (globals.css) */}
+                  <span className="nav-word inline-block">
                     {label}
                   </span>
                   <span
