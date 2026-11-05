@@ -20,7 +20,6 @@ function isActive(pathname: string, href: string) {
 
 export default function NavBar() {
   const pathname = usePathname();
-  useMenuStyle();
   const entered = useEntered();
   // On the home page the menu waits until the ghost is clicked
   const shown = pathname !== "/" || entered;
@@ -70,22 +69,6 @@ export default function NavBar() {
       </nav>
     </motion.header>
   );
-}
-
-/**
- * TEST (2026-11-05): two versions of the menu's hover to compare. ?menu=lift adds the float-up and shadow;
- * ?menu=grow is without it. The pick is kept for the visit, so it stays while moving between pages.
- */
-function useMenuStyle() {
-  useEffect(() => {
-    try {
-      const asked = new URLSearchParams(window.location.search).get("menu");
-      if (asked === "lift" || asked === "grow") sessionStorage.setItem("menu-style", asked);
-      document.documentElement.dataset.menu = sessionStorage.getItem("menu-style") ?? "grow";
-    } catch {
-      document.documentElement.dataset.menu = "grow";
-    }
-  }, []);
 }
 
 /** How far down the page you are, drawn as a green line along the bottom of the menu */

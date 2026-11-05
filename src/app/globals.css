@@ -529,8 +529,8 @@ body {
 
 /*
  * Menu (Aes, 2026-11-05): no more green flicker. Hovering a word makes it bounce bigger while the other
- * words step back, and clicking squeezes it. With ?menu=lift it also floats up off the page with a soft
- * shadow under it, and drops back down when clicked, like pressing a sticker.
+ * words step back. It also floats up off the page with a soft shadow under it, and when clicked it squeezes
+ * and drops back down, like pressing a sticker.
  */
 .nav-word {
   transform-origin: 50% 80%;
@@ -552,7 +552,7 @@ body {
     scale: 1.16;
   }
 
-  html[data-menu="lift"] nav a:hover .nav-word {
+  nav ul a:hover .nav-word {
     translate: 0 -5px;
     text-shadow: 0 9px 10px rgb(0 0 0 / 0.18);
   }
@@ -565,7 +565,7 @@ nav ul:has(> li > a:hover) a:active .nav-word {
   transition-duration: 0.12s;
 }
 
-html[data-menu="lift"] nav a:active .nav-word {
+nav ul a:active .nav-word {
   translate: 0 0;
   text-shadow: 0 2px 2px rgb(0 0 0 / 0.2);
 }
