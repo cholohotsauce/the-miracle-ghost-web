@@ -56,7 +56,7 @@ export default function Soon() {
         )}
 
         <div className="mt-9 w-full max-w-sm">
-          <EarlyAccessForm from="teaser" prompt="The ghost tells you first" cta="Haunt me" />
+          <EarlyAccessForm from="teaser" prompt="Join the Ghost List" cta="Add me" />
         </div>
       </div>
 
