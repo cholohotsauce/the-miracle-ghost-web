@@ -8,8 +8,8 @@ import { track } from "@/lib/stats";
 
 /**
  * Ghost Cam (Archie and Aes, 2026-11-04): videos never sit on the page as a plain YouTube box.
- * - Big: the page goes dark, the screen opens with a burst of TV static, and the ghost peeks over its top edge
- *   to watch along. Our own controls; YouTube's buttons and titles never show.
+ * - Big: the page goes dark and the screen opens with a burst of TV static (no ghost over the screen: Aes, 2026-11-05).
+ *   Our own controls; YouTube's buttons and titles never show.
  * - Mini: the screen shrinks into the little ghost's corner and the ghost becomes the screen: the video plays
  *   inside his body, and keeps playing while the visitor moves around the site. Click him to make it big again.
  * One player element moves between the two, so the video never restarts.
@@ -147,20 +147,6 @@ function Cam({ video, big, reducedMotion }: { video: CamVideo; big: boolean; red
       )}
 
       <div className={big ? "relative" : "h-full w-full"}>
-        {/* Big: the ghost peeks over the top edge of the screen to watch along, like on the Shop banner */}
-        {big && (
-          <motion.img
-            src={POSTER_URL}
-            alt=""
-            aria-hidden
-            draggable={false}
-            initial={reducedMotion ? false : { y: "70%" }}
-            animate={{ y: "52%" }}
-            transition={{ delay: reducedMotion ? 0 : 0.45, type: "spring", stiffness: 160, damping: 14 }}
-            className="pointer-events-none absolute bottom-full right-[8%] h-[clamp(4.5rem,13vw,8.5rem)] w-auto select-none"
-          />
-        )}
-
         {/* The screen. In mini mode it takes the ghost's shape, and his shading and face sit over the video. */}
         <div
         className={`relative overflow-hidden bg-black ${
