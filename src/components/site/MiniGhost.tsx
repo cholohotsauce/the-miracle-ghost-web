@@ -8,6 +8,7 @@ import GhostPoster from "@/components/ghost/GhostPoster";
 import type { TrickName } from "@/components/ghost/tricks";
 import type { GhostState } from "@/components/ghost/types";
 import { useGhostEvents } from "@/lib/ghostBus";
+import { useGhostCam } from "@/lib/ghostCam";
 import { track } from "@/lib/stats";
 import { useIdleMood, type Mood } from "@/lib/useIdleMood";
 
@@ -26,7 +27,9 @@ const clamp = (v: number) => Math.max(-1, Math.min(1, v));
  */
 export default function MiniGhost() {
   const pathname = usePathname();
-  const hidden = pathname === "/";
+  // While a video plays (Ghost Cam), he has turned into the screen, so he steps away
+  const cam = useGhostCam();
+  const hidden = pathname === "/" || cam.video !== null;
   const reducedMotion = useReducedMotion() ?? false;
   const box = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);

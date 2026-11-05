@@ -3,6 +3,7 @@ import { Fredoka, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
+import GhostCam from "@/components/site/GhostCam";
 import MiniGhost from "@/components/site/MiniGhost";
 import { PageTransitionProvider } from "@/components/site/PageTransition";
 import Magnetic from "@/components/site/Magnetic";
@@ -74,6 +75,7 @@ export default function RootLayout({
           <Scramble />
           <TabGhost />
           <MiniGhost />
+          <GhostCam />
         </PageTransitionProvider>
         <TabHaunt />
         <Analytics />

@@ -19,7 +19,8 @@ export type StatEvent =
   | "product_view"
   | "add_to_cart"
   | "early_access_signup"
-  | "contact_sent";
+  | "contact_sent"
+  | "ghost_cam_open";
 
 export function track(event: StatEvent, props?: Record<string, string | number | boolean>) {
   try {
