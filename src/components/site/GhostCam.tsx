@@ -15,6 +15,56 @@ import { track } from "@/lib/stats";
  * One player element moves between the two, so the video never restarts.
  */
 
+/**
+ * The big screen's ghost outline (Archie's idea, 2026-11-05): soft head bumps along the top edge, the middle one
+ * tallest like his head, and little drips along the bottom, the middle one longest. `top` and `drip` are how deep
+ * the bumps and drips go, as a share of the screen's height. Returned as a CSS polygon in percentages.
+ */
+function ghostScreen(top: number, drip: number) {
+  // Key heights along the edge (0 = flat, 1 = full depth), smoothed between with a cosine ease
+  // Like his silhouette: round shoulders, a tall round head in the middle, and narrow notches between them
+  const TOP: [number, number][] = [
+    [0, 0.25], [0.16, 0.72], [0.3, 0.55], [0.345, 0.04], [0.39, 0.55], [0.5, 1],
+    [0.61, 0.55], [0.655, 0.04], [0.7, 0.55], [0.84, 0.72], [1, 0.25],
+  ];
+  // Round scallops hanging down along the hem, sharp little cusps between them, the middle one longest:
+  // [where it starts, where it ends, how deep], each one half a circle
+  const HEM: [number, number, number][] = [
+    [0, 0.2, 0.55], [0.2, 0.4, 0.8], [0.4, 0.6, 1], [0.6, 0.8, 0.8], [0.8, 1, 0.55],
+  ];
+  const hem = (x: number) => {
+    const [a, b, d] = HEM.find(([, e]) => x <= e) ?? HEM[HEM.length - 1];
+    const u = ((x - a) / (b - a)) * 2 - 1;
+    return d * Math.sqrt(Math.max(0, 1 - u * u)) ** 0.6;
+  };
+  const at = (keys: [number, number][], x: number) => {
+    const i = Math.max(0, keys.findIndex(([kx]) => kx >= x) - 1);
+    const [x0, y0] = keys[i];
+    const [x1, y1] = keys[Math.min(i + 1, keys.length - 1)];
+    const t = x1 === x0 ? 0 : (x - x0) / (x1 - x0);
+    return y0 + (y1 - y0) * (1 - Math.cos(t * Math.PI)) / 2;
+  };
+  const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
+  const STEPS = 200;
+  const pts: string[] = [];
+  for (let n = 0; n <= STEPS; n++) {
+    const x = n / STEPS;
+    pts.push(`${pct(x)} ${pct(top * (1 - at(TOP, x)))}`);
+  }
+  for (let n = STEPS; n >= 0; n--) {
+    const x = n / STEPS;
+    pts.push(`${pct(x)} ${pct(1 - drip * (1 - hem(x)))}`);
+  }
+  return `polygon(${pts.join(", ")})`;
+}
+
+/** Screen shapes to compare (?screen=1 subtle, ?screen=2 stronger, ?screen=0 the plain rounded screen) */
+const SCREENS = { 0: null, 1: ghostScreen(0.05, 0.05), 2: ghostScreen(0.1, 0.1) } as const;
+const screenFromAddress = (): 0 | 1 | 2 => {
+  const v = new URLSearchParams(window.location.search).get("screen");
+  return v === "0" ? 0 : v === "2" ? 2 : 1;
+};
+
 type Player = {
   playing: boolean;
   ended: boolean;
@@ -80,6 +130,8 @@ function Cam({ video, big, reducedMotion }: { video: CamVideo; big: boolean; red
   const file = useFileVideo(ytId ? null : video.src);
   const player: Player = ytId ? yt.player : file.player;
   const [statik, setStatik] = useState(!reducedMotion);
+  const [shape] = useState(screenFromAddress);
+  const clip = big ? SCREENS[shape] : null;
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
@@ -146,15 +198,23 @@ function Cam({ video, big, reducedMotion }: { video: CamVideo; big: boolean; red
         </div>
       )}
 
-      <div className={big ? "relative" : "h-full w-full"}>
+      {/* With the ghost outline, the green shadow follows his shape (a drop-shadow, not a box-shadow) */}
+      <div
+        className={big ? "relative" : "h-full w-full"}
+        style={clip ? { filter: "drop-shadow(0 0 1.5px var(--color-neon-green)) drop-shadow(0 0 14px rgb(57 255 20 / 0.35)) drop-shadow(0 0 40px rgb(0 255 255 / 0.25))" } : undefined}
+      >
         {/* The screen. In mini mode it takes the ghost's shape, and his shading and face sit over the video. */}
         <div
         className={`relative overflow-hidden bg-black ${
-          big ? "aspect-video w-full rounded-[22px] shadow-[8px_8px_0_var(--color-neon-green),0_0_60px_rgb(0_255_255/0.25)]" : "h-full w-full cursor-pointer"
+          big
+            ? `aspect-video w-full ${clip ? "" : "rounded-[22px] shadow-[8px_8px_0_var(--color-neon-green),0_0_60px_rgb(0_255_255/0.25)]"}`
+            : "h-full w-full cursor-pointer"
         }`}
         style={
           big
-            ? undefined
+            ? clip
+              ? { clipPath: clip }
+              : undefined
             : {
                 maskImage: `url(${POSTER_URL})`,
                 WebkitMaskImage: `url(${POSTER_URL})`,
