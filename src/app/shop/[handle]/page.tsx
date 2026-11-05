@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import ShopifyBuyButton from "@/components/ShopifyBuyButton";
 import Countdown from "@/components/shop/Countdown";
+import InquiryForm from "@/components/shop/InquiryForm";
+import MerchBuyBox from "@/components/shop/MerchBuyBox";
 import ProductCard from "@/components/shop/ProductCard";
 import ProductFoldouts from "@/components/shop/ProductFoldouts";
 import ProductGallery from "@/components/shop/ProductGallery";
@@ -11,9 +12,9 @@ import EarlyAccessForm from "@/components/site/EarlyAccessForm";
 import SectionTitle from "@/components/site/SectionTitle";
 import TransitionLink from "@/components/site/TransitionLink";
 import { editionFor, lockedUntil } from "@/content/drops";
-import { CARE, CERTIFICATE, SHIPPING } from "@/content/productInfo";
+import { SHIPPING } from "@/content/productInfo";
 import { categoryOf } from "@/content/shopCategories";
-import { formatPrice, getProduct, getProducts } from "@/lib/shopify";
+import { DETAIL_FIELDS, formatPrice, getProduct, getProducts } from "@/lib/shopify";
 import { jsonLd, SITE_NAME, SITE_URL } from "@/lib/site";
 
 // Same refresh interval as the Shop grid
@@ -49,10 +50,15 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
   const [product, all] = await Promise.all([getProduct(handle), getProducts()]);
   if (!product) notFound();
 
-  const price = formatPrice(product.price);
-  const edition = editionFor(product.handle, product.productType);
   const locked = lockedUntil(product.handle);
   const category = categoryOf(product);
+  const isArtwork = category.slug === "artwork";
+  const variants = product.variants ?? [];
+  // Medium, Year, Dimensions: only the ones Aes filled in on Shopify
+  const facts = DETAIL_FIELDS.flatMap((f) => {
+    const value = product.details?.[f.key];
+    return value ? [{ ...f, value }] : [];
+  });
   // More from the same door first, then the rest of the shop
   const others = all
     .filter((p) => p.handle !== product.handle)
@@ -90,60 +96,99 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
         ← Back to {category.label}
       </TransitionLink>
 
-      <div className="grid gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-14">
-        <ProductGallery images={product.images} title={product.title}>
-          {!product.available && !locked && <SoldOutStamp size="lg" />}
-        </ProductGallery>
+      {isArtwork ? (
+        // Aes's artwork mockup (2026-11-05): painting left, facts and the Inquire form right. No price, no cart.
+        <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-14 lg:gap-20">
+          <ProductGallery images={product.images} title={product.title} framed>
+            {!product.available && !locked && <SoldOutStamp size="lg" />}
+          </ProductGallery>
 
-        <section data-reveal className="flex flex-col gap-6 md:sticky md:top-32 md:self-start">
-          <div>
-            {product.productType && (
-              <p data-scramble className="font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{product.productType}</p>
+          <section data-reveal className="flex flex-col">
+            <p data-scramble className="text-xs uppercase tracking-[0.2em] text-foreground/60">Original artwork</p>
+            <h1 className="mt-3 text-4xl uppercase leading-[0.95] md:text-6xl">{product.title}</h1>
+
+            {facts.length > 0 && (
+              // Dividers between the facts on wide screens; on a phone they wrap, so no dividers
+              <dl className="mt-8 flex flex-wrap gap-x-8 gap-y-4 md:gap-x-0">
+                {facts.map((f, i) => (
+                  <div key={f.key} className={`md:pr-10 ${i > 0 ? "md:border-l-2 md:border-foreground md:pl-10" : ""}`}>
+                    <dt className="text-xs uppercase tracking-[0.2em]">{f.label}</dt>
+                    <dd className="mt-1 text-base md:text-lg">{f.value}</dd>
+                  </div>
+                ))}
+              </dl>
             )}
-            <h1 className="mt-2 text-4xl font-black uppercase leading-[0.95] tracking-wide md:text-6xl">{product.title}</h1>
-            {edition && (
-              // The edition, big and outlined: "1 OF 1" sells an original
-              <p className="mt-4 text-[clamp(2.5rem,7vw,4.5rem)] font-black uppercase leading-none text-transparent [-webkit-text-stroke:2px_var(--foreground)]">
-                {edition}
-              </p>
-            )}
+
+            {product.description && <p className="mt-6 max-w-prose leading-relaxed text-foreground/80">{product.description}</p>}
+
+            <div className="mt-8 border-t-2 border-foreground pt-8">
+              {locked ? (
+                <div className="flex flex-col gap-5 border-2 border-line bg-foreground p-5 text-background">
+                  <p className="font-drip text-3xl uppercase">The ghost is guarding this one</p>
+                  <Countdown to={locked} className="text-[var(--color-neon-green)]" />
+                  <div className="[&_input]:border-background [&_input]:bg-foreground [&_input]:text-background [&_button]:bg-[var(--color-neon-green)] [&_button]:text-foreground">
+                    <EarlyAccessForm from={`locked-${product.handle}`} prompt="Get told the second it unlocks." />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-5xl uppercase leading-none md:text-6xl">Inquire</h2>
+                  <p className="mb-8 mt-4 leading-relaxed">
+                    {product.available
+                      ? "Submit an inquiry below for availability, pricing and additional information."
+                      : "This one found a home. Ask below about similar work or a commission."}
+                  </p>
+                  <InquiryForm handle={product.handle} title={product.title} />
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      ) : (
+        // Aes's merch mockup (2026-11-05): photos with thumbnails left; price, sizes, green Add to Cart right
+        <div className="grid gap-10 md:grid-cols-2 md:gap-14 lg:gap-20">
+          {/* A bit smaller than the column, so the thumbnails sit above the fold like the mockup */}
+          <div className="mx-auto w-full max-w-[34rem]">
+            <ProductGallery images={product.images} title={product.title}>
+              {!product.available && !locked && <SoldOutStamp size="lg" />}
+            </ProductGallery>
           </div>
 
-          <dl className="grid grid-cols-2 gap-px border-2 border-line bg-line font-mono text-sm">
-            <div className="bg-background p-3">
-              <dt className="text-xs uppercase tracking-[0.2em] text-foreground/60">Price</dt>
-              <dd className={`mt-1 text-lg font-bold ${product.available ? "" : "line-through opacity-50"}`}>{price}</dd>
+          <section data-reveal className="flex flex-col gap-6 md:sticky md:top-32 md:self-start">
+            <div>
+              <p data-scramble className="text-xs uppercase tracking-[0.2em] text-foreground/60">Merch</p>
+              <h1 className="mt-3 text-4xl uppercase leading-[0.95] md:text-6xl">{product.title}</h1>
             </div>
-            <div className="bg-background p-3">
-              <dt className="text-xs uppercase tracking-[0.2em] text-foreground/60">Edition</dt>
-              <dd className="mt-1 text-lg font-bold">{edition ?? "Open"}</dd>
-            </div>
-          </dl>
 
-          {product.description && <p className="max-w-prose leading-relaxed">{product.description}</p>}
+            {product.description && <p className="max-w-prose leading-relaxed text-foreground/80">{product.description}</p>}
 
-          {locked ? (
-            <div className="flex flex-col gap-5 border-2 border-line bg-foreground p-5 text-background">
-              <p className="font-drip text-3xl uppercase">The ghost is guarding this one</p>
-              <Countdown to={locked} className="text-[var(--color-neon-green)]" />
-              <div className="[&_input]:border-background [&_input]:bg-foreground [&_input]:text-background [&_button]:bg-[var(--color-neon-green)] [&_button]:text-foreground">
-                <EarlyAccessForm from={`locked-${product.handle}`} prompt="Get told the second it unlocks." />
+            {locked ? (
+              <div className="flex flex-col gap-5 border-2 border-line bg-foreground p-5 text-background">
+                <p className="font-drip text-3xl uppercase">The ghost is guarding this one</p>
+                <Countdown to={locked} className="text-[var(--color-neon-green)]" />
+                <div className="[&_input]:border-background [&_input]:bg-foreground [&_input]:text-background [&_button]:bg-[var(--color-neon-green)] [&_button]:text-foreground">
+                  <EarlyAccessForm from={`locked-${product.handle}`} prompt="Get told the second it unlocks." />
+                </div>
               </div>
-            </div>
-          ) : product.available ? (
-            <div className="min-h-14">
-              <ShopifyBuyButton productId={product.id} layout="button" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4 border-2 border-line p-5">
-              <p className="font-drip text-3xl uppercase">Gone. Someone beat you to it.</p>
-              <EarlyAccessForm from={`sold-${product.handle}`} prompt="Don't miss the next one." />
-            </div>
-          )}
+            ) : product.available && variants.length > 0 ? (
+              <MerchBuyBox
+                options={product.options ?? []}
+                variants={variants}
+                price={formatPrice(product.price, { cents: true })}
+                variantPrices={Object.fromEntries(variants.map((v) => [v.id, formatPrice(v.price, { cents: true })]))}
+              />
+            ) : (
+              <div className="flex flex-col gap-4 border-2 border-line p-5">
+                <p className="font-drip text-3xl uppercase">Gone. Someone beat you to it.</p>
+                <EarlyAccessForm from={`sold-${product.handle}`} prompt="Don't miss the next one." />
+              </div>
+            )}
 
-          <ProductFoldouts sections={category.slug === "artwork" ? [SHIPPING, CERTIFICATE] : [SHIPPING, CARE]} />
-        </section>
-      </div>
+            <ProductFoldouts sections={[SHIPPING]} open />
+            <p className="text-sm italic text-foreground/80">Personally inspected by the artist before it leaves the studio.</p>
+          </section>
+        </div>
+      )}
 
       {others.length > 0 && (
         <section className="mt-20 md:mt-28">

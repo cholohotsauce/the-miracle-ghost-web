@@ -20,6 +20,7 @@ export type StatEvent =
   | "add_to_cart"
   | "early_access_signup"
   | "contact_sent"
+  | "inquiry_sent"
   | "ghost_cam_open";
 
 export function track(event: StatEvent, props?: Record<string, string | number | boolean>) {

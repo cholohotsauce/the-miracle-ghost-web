@@ -1,8 +1,6 @@
 /**
- * The fold-out sections under every product (Round 4 polish, 2026-10-31).
- * DRAFT: the shipping, returns, and certificate wording is a stand-in written by the developer.
- * Aes has to confirm the real rules before the shop opens; until then each section shows a DRAFT tag.
- * When the text is final, set `draft: false` on it.
+ * The fold-out sections under a merch product (Round 4 polish, 2026-10-31; Aes's mockup, 2026-11-05).
+ * A section with `draft: true` shows a DRAFT tag until Aes confirms its wording.
  */
 
 export type InfoSection = {
@@ -13,22 +11,10 @@ export type InfoSection = {
 
 export const SHIPPING: InfoSection = {
   title: "Shipping & returns",
+  // Aes's own words from his merch mockup (2026-11-05)
   body: [
-    "Ships from Miami, tracked, within 3 to 5 business days.",
-    "Originals ship insured and are packed by the artist.",
-    "Merch can come back unworn within 14 days. Originals are final sale.",
+    "Ships from Miami with tracking within 3–5 business days.",
+    "All sales are final. No returns or exchanges, except for damaged or incorrect items or as required by law.",
   ],
-  draft: true,
-};
-
-export const CARE: InfoSection = {
-  title: "Care",
-  body: ["Wash cold, inside out. Hang to dry.", "Don't iron over the print."],
-  draft: true,
-};
-
-export const CERTIFICATE: InfoSection = {
-  title: "Certificate of authenticity",
-  body: ["Every original comes signed by Aes, with a certificate of authenticity."],
-  draft: true,
+  draft: false,
 };
