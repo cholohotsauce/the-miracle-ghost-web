@@ -75,7 +75,7 @@ export default function GhostCam() {
 
 function Cam({ video, big, reducedMotion }: { video: CamVideo; big: boolean; reducedMotion: boolean }) {
   const ytId = youTubeId(video.src);
-  const still = videoStill(video.src);
+  const still = videoStill(video.src, video.poster);
   const yt = useYouTube(ytId);
   const file = useFileVideo(ytId ? null : video.src);
   const player: Player = ytId ? yt.player : file.player;
@@ -187,7 +187,7 @@ function Cam({ video, big, reducedMotion }: { video: CamVideo; big: boolean; red
               className="pointer-events-none absolute inset-0 grid place-items-center bg-black"
             >
               {still && (
-                // eslint-disable-next-line @next/next/no-img-element -- the video's own still, from YouTube
+                // eslint-disable-next-line @next/next/no-img-element -- the video's own still
                 <img src={still} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45 grayscale" />
               )}
               {big && (

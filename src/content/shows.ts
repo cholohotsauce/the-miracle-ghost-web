@@ -21,6 +21,8 @@ export type Show = {
    * a file under /public (e.g. "/videos/partners-in-crime.mp4") or a YouTube or Vimeo link
    */
   video?: string;
+  /** A still for a video file, shown before it plays and through the title letters on hover */
+  videoPoster?: string;
   note?: string;
   sample?: boolean;
 };
@@ -31,8 +33,9 @@ export const shows: Show[] = [
     venue: "Central Command Gallery",
     city: "Miami, FL",
     start: "2026-07-25",
-    // TEST video (Archie, 2026-11-05): swap in the real recap when it's ready
-    video: "https://youtu.be/dQw4w9WgXcQ",
+    // Aes's opening recap (2026-11-05), compressed for the web from the original file
+    video: "/videos/partners-in-crime-recap.mp4",
+    videoPoster: "/videos/partners-in-crime-recap.jpg",
   },
 ];
 

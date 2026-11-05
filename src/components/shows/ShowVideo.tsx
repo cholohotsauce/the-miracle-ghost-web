@@ -8,13 +8,25 @@ import { playVideo, videoStill } from "@/lib/ghostCam";
  * `src` is a YouTube link or a video file under /public.
  * On hover, the video's still shows through the letters of the title, as a little preview.
  */
-export default function ShowVideo({ src, title, label = "Recap", children }: { src: string; title: string; label?: string; children: ReactNode }) {
-  const still = videoStill(src);
+export default function ShowVideo({
+  src,
+  title,
+  label = "Recap",
+  poster,
+  children,
+}: {
+  src: string;
+  title: string;
+  label?: string;
+  poster?: string;
+  children: ReactNode;
+}) {
+  const still = videoStill(src, poster);
 
   return (
     <button
       type="button"
-      onClick={() => playVideo({ src, title, label })}
+      onClick={() => playVideo({ src, title, label, poster })}
       aria-haspopup="dialog"
       className="group/video relative inline text-left uppercase outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground"
     >
