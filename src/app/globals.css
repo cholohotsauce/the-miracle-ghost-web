@@ -456,7 +456,8 @@ body {
 
 /* The banner's ghost peeks up from the bottom edge, bobbing a little, with a tiny twitch now and then */
 .banner-ghost {
-  opacity: 0.92;
+  /* See-through, so he haunts the banner rather than sits on it (Aes, 2026-11-05) */
+  opacity: 0.4;
   animation:
     banner-haunt 8s ease-in-out infinite,
     teaser-float 4s ease-in-out infinite;
