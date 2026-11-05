@@ -35,7 +35,7 @@ function ShowRow({ show }: { show: Show }) {
           {/* On hover the title fills with green from left to right (globals.css, Round 5b).
               With a recap video, the title plays it right on the site (Aes, 2026-11-04). */}
           {show.video ? (
-            <ShowVideo src={show.video} title={show.title}>
+            <ShowVideo src={show.video} poster={show.videoPoster} title={show.title}>
               <span className="show-fill">{show.title}</span>
             </ShowVideo>
           ) : (

@@ -14,6 +14,8 @@ export type CamVideo = {
   title: string;
   /** Small line under the title, e.g. "Recap" */
   label?: string;
+  /** A still for a video file (YouTube videos bring their own) */
+  poster?: string;
 };
 
 export type CamState = { video: CamVideo | null; mode: "big" | "mini"; seq: number };
@@ -65,8 +67,9 @@ export function youTubeId(src: string): string | null {
   }
 }
 
-/** A still for a video: YouTube's own thumbnail, or none for a file */
-export function videoStill(src: string): string | null {
+/** A still for a video: the poster given for a file, or YouTube's own thumbnail */
+export function videoStill(src: string, poster?: string): string | null {
+  if (poster) return poster;
   const id = youTubeId(src);
   return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
 }
