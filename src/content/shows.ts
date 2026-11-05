@@ -31,6 +31,8 @@ export const shows: Show[] = [
     venue: "Central Command Gallery",
     city: "Miami, FL",
     start: "2026-07-25",
+    // TEST video (Archie, 2026-11-05): swap in the real recap when it's ready
+    video: "https://youtu.be/dQw4w9WgXcQ",
   },
 ];
 
