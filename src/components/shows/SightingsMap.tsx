@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Sighting } from "@/content/shows";
@@ -18,13 +18,6 @@ const GlobeScene = dynamic(() => import("./GlobeScene"), { ssr: false });
 /** Drag distance, in pixels, before a press counts as a spin instead of a tap */
 const DRAG_START = 4;
 
-type GlowLevel = 1 | 2 | 3;
-const noSubscribe = () => () => {};
-const glowFromAddress = (): GlowLevel => {
-  const g = new URLSearchParams(window.location.search).get("glow");
-  return g === "1" ? 1 : g === "2" ? 2 : 3;
-};
-
 /** Where the globe faces at rest: the Americas, where most sightings are */
 const HOME = facing([25, -80]);
 
@@ -38,8 +31,6 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
   const box = useRef<HTMLDivElement>(null);
   // The grey stand-in stays until the entrance starts, so the jump back for the spin is never seen
   const shown = ready && arrived;
-  // Glow strength: 3 by default (Archie's pick); ?glow=1 or ?glow=2 on the address still shows the softer ones
-  const glow = useSyncExternalStore(noSubscribe, glowFromAddress, () => 3 as GlowLevel);
 
   // Start with the Americas in front, tipped a little toward the north
   const spin = useRef<Spin>({ yaw: HOME.yaw, pitch: REST_PITCH, vYaw: 0, vPitch: 0, dragging: false, target: null });
@@ -158,7 +149,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
             (Aes, 2026-11-04: it used to fade out and leave a thin line around the globe). */}
         <div
           aria-hidden
-          className={`globe-glow globe-glow-${glow} absolute inset-0 transition-opacity duration-700 ${
+          className={`globe-glow absolute inset-0 transition-opacity duration-700 ${
             shown ? "opacity-100" : "opacity-0"
           }`}
         />
@@ -190,7 +181,7 @@ export default function SightingsMap({ sightings }: { sightings: Sighting[] }) {
       </div>
 
       {/* Light grey so it stays in the background (Aes, 2026-11-04) */}
-      <p className="mt-3 text-sm font-bold text-foreground/40 md:text-base">Only the &lsquo;known&rsquo; world is shown here.</p>
+      <p className="mt-3 text-sm font-bold text-foreground/60 md:text-base">Only the &lsquo;known&rsquo; world is shown here.</p>
 
       {/* The ghosts are 3D shapes inside the canvas, so keyboards and screen readers get a plain list of them */}
       <ul className="sr-only">

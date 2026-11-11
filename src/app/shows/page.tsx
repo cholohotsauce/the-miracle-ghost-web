@@ -99,22 +99,21 @@ export default function ShowsPage() {
             Timeline
           </h2>
           <SectionTitle as="h3">Upcoming</SectionTitle>
-          {upcoming.length ? (
+          {upcoming.length > 0 && (
             <ul>
               {upcoming.map((s) => (
                 <ShowRow key={s.title + s.start} show={s} />
               ))}
             </ul>
-          ) : (
-            // No show booked: a short line and a sign-up, so the empty list still does something (Round 4).
-            // Aes, 2026-11-04: no glitch on "To be announced", and the sign-up says "Join the Ghost List" / "Add me".
-            <div data-reveal className="flex flex-col gap-5 border-b-2 border-line py-7 md:py-9">
-              <p className="text-xl font-bold uppercase leading-tight md:text-2xl">To be announced</p>
-              <div className="w-full max-w-md">
-                <EarlyAccessForm from="shows-upcoming" prompt="Join the Ghost List" cta="Add me" />
-              </div>
-            </div>
           )}
+          {/* The Ghost List sign-up lives here on Shows (Aes, 2026-11-04), so the footer leaves its copy out.
+              With no show booked it sits under "To be announced"; with shows, under the list. */}
+          <div data-reveal className="flex flex-col gap-5 border-b-2 border-line py-7 md:py-9">
+            {upcoming.length === 0 && <p className="text-xl font-bold uppercase leading-tight md:text-2xl">To be announced</p>}
+            <div className="w-full max-w-md">
+              <EarlyAccessForm from="shows-upcoming" prompt="Join the Ghost List" cta="Add me" />
+            </div>
+          </div>
           {past.length > 0 && (
             <div className="mt-10 md:mt-14">
               <SectionTitle as="h3">Past</SectionTitle>

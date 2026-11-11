@@ -28,9 +28,13 @@ export async function generateMetadata({ params }: PageProps<"/shop/[handle]">):
   const { handle } = await params;
   const product = await getProduct(handle);
   if (!product) return { title: "Not found" };
+  // Artwork is sold by inquiry, so its price stays off the page and out of share previews
+  const artwork = categoryOf(product).slug === "artwork";
   const description =
     product.description ||
-    `${product.title}: an original by The Miracle Ghost (Aes), Miami. ${formatPrice(product.price)}.`;
+    (artwork
+      ? `${product.title}: an original by The Miracle Ghost (Aes), Miami.`
+      : `${product.title} by The Miracle Ghost (Aes), Miami. ${formatPrice(product.price)}.`);
   return {
     title: product.title,
     description,
@@ -76,8 +80,8 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
     url: `${SITE_URL}/shop/${product.handle}`,
     offers: {
       "@type": "Offer",
-      price: product.price.amount.toFixed(2),
-      priceCurrency: product.price.currency,
+      // No price for artwork: originals are sold by inquiry
+      ...(isArtwork ? {} : { price: product.price.amount.toFixed(2), priceCurrency: product.price.currency }),
       availability: product.available ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
       url: `${SITE_URL}/shop/${product.handle}`,
     },
@@ -198,7 +202,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
               <li key={p.id} data-reveal="item">
                 <ProductCard
                   product={p}
-                  price={formatPrice(p.price)}
+                  price={categoryOf(p).slug === "artwork" ? undefined : formatPrice(p.price)}
                   edition={editionFor(p.handle, p.productType)}
                   lockedUntil={lockedUntil(p.handle)}
                 />

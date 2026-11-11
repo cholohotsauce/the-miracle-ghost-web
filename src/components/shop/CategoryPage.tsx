@@ -31,7 +31,7 @@ export default async function CategoryPage({ slug }: { slug: ShopCategorySlug })
             <li key={product.id} data-reveal="item">
               <ProductCard
                 product={product}
-                price={formatPrice(product.price)}
+                price={slug === "artwork" ? undefined : formatPrice(product.price)}
                 edition={editionFor(product.handle, product.productType)}
                 lockedUntil={lockedUntil(product.handle)}
                 priority={i < 2}

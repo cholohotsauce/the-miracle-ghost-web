@@ -38,6 +38,8 @@ export default function MiniGhost() {
   const [typing, setTyping] = useState(false);
   // While the page scrolls on a phone, he ducks lower so text can pass over him
   const [scrolling, setScrolling] = useState(false);
+  // When the page under him has a field, button, link, or words, he ducks so he never covers them
+  const [covering, setCovering] = useState(false);
   const sayTimer = useRef<number | undefined>(undefined);
   const lookAt = useRef<{ x: number; y: number } | null>(null);
   const controls = useRef<GhostState>({
@@ -130,6 +132,38 @@ export default function MiniGhost() {
     };
   }, [hidden]);
 
+  // Checks what sits under his spot (where he stands when he is not ducking) once the page stops moving
+  useEffect(() => {
+    if (hidden) return;
+    let timer: number | undefined;
+    const check = () => {
+      const el = box.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      // His standing spot at the bottom edge: all of him on wide screens, the peeking 58% on phones
+      const shown = r.height * (window.matchMedia("(min-width: 48rem)").matches ? 1 : 0.58);
+      setCovering(coversContent(r.left, window.innerHeight - shown, r.width, shown));
+    };
+    const later = (ms: number) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(check, ms);
+    };
+    const onScroll = () => later(500);
+    const onResize = () => later(300);
+    // After a page change, wait for the paint curtain and the reveals
+    const first = window.setTimeout(check, 1_400);
+    const second = window.setTimeout(check, 3_000);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(first);
+      window.clearTimeout(second);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [hidden, pathname]);
+
   // A little hello on each new page
   useEffect(() => {
     if (hidden) return;
@@ -184,10 +218,19 @@ export default function MiniGhost() {
 
   return (
     // On phones he peeks up from the bottom edge so he never covers the page, ducks lower while the page scrolls,
-    // and rises when he has something to say
+    // ducks on any screen when a field, button, or text sits under him, and rises when he has something to say
     <div
+      data-mini-ghost
       className={`pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)-0.75rem)] -left-2 z-40 transition-transform duration-500 ease-out md:bottom-0 md:left-2 ${
-        typing ? "translate-y-full" : line ? "translate-y-0" : scrolling ? "max-md:translate-y-[72%]" : "max-md:translate-y-[42%]"
+        typing
+          ? "translate-y-full"
+          : line
+            ? "translate-y-0"
+            : covering
+              ? "translate-y-[72%]"
+              : scrolling
+                ? "max-md:translate-y-[72%]"
+                : "max-md:translate-y-[42%]"
       }`}
     >
       <AnimatePresence>
@@ -225,4 +268,23 @@ export default function MiniGhost() {
       </div>
     </div>
   );
+}
+
+/** Things he must never stand on: form fields, buttons, links, pictures, and words */
+const CONTENT = "input, textarea, select, button, a, label, img, video, canvas, h1, h2, h3, h4, p, li, dt, dd";
+
+/** True when a field, button, link, picture, or text sits anywhere inside the given screen area */
+function coversContent(left: number, top: number, width: number, height: number) {
+  for (let ix = 1; ix <= 4; ix++) {
+    for (let iy = 1; iy <= 4; iy++) {
+      const x = left + (width * ix) / 5;
+      const y = top + (height * iy) / 5;
+      if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue;
+      for (const el of document.elementsFromPoint(x, y)) {
+        if (el.closest("[data-mini-ghost]")) continue;
+        if (el.closest(CONTENT)) return true;
+      }
+    }
+  }
+  return false;
 }

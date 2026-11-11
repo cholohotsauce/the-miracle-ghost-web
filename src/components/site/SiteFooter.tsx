@@ -14,6 +14,9 @@ const links = [
 /** Paths where the footer stays away: Home belongs to the lone ghost, and the teaser covers everything */
 const BARE = ["/", "/soon"];
 
+/** Pages that already have the Ghost List sign-up on them (the Shop's drop banner, the Shows list), so not twice */
+const HAS_SIGNUP = ["/shop", "/shows"];
+
 /**
  * The footer under every content page: drop alerts, Aes's Instagram, the menu again, and the small print.
  * The bottom left corner is the mini ghost's spot, so on wide screens the content starts to the right of him
@@ -27,10 +30,14 @@ export default function SiteFooter() {
     <footer className="w-full bg-background px-5 text-foreground md:px-6 lg:px-12">
       <div data-reveal className="mx-auto max-w-[84rem] border-t-2 border-line pb-[calc(env(safe-area-inset-bottom)+6rem)] pt-8 md:pb-10 md:pl-40 md:pt-10">
         <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-12">
-          <div className="w-full max-w-md">
-            {/* Aes, 2026-11-04: the same words as the Shows sign-up */}
-            <EarlyAccessForm from="footer" prompt="Join the Ghost List" cta="Add me" />
-          </div>
+          {/* Aes, 2026-11-04: the same words as the Shows sign-up */}
+          {!HAS_SIGNUP.includes(pathname) ? (
+            <div className="w-full max-w-md">
+              <EarlyAccessForm from="footer" prompt="Join the Ghost List" cta="Add me" />
+            </div>
+          ) : (
+            <div />
+          )}
           {/* Contact already ends with the big Instagram strip */}
           {pathname !== "/contact" && (
             <a
