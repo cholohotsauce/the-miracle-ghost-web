@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useTimeLeft } from "@/lib/useTimeLeft";
 
 const UNITS = [
   ["Days", 86_400_000],
@@ -11,33 +11,8 @@ const UNITS = [
 
 /** Days, hours, minutes, and seconds left until `to`. On reaching zero it reloads, so the launched site loads. */
 export default function Countdown({ to }: { to: number }) {
-  // Unknown until the browser's clock is read, so the server render and the first paint match
-  const [now, setNow] = useState<number | null>(null);
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
-    const first = requestAnimationFrame(() => setNow(Date.now()));
-    return () => {
-      clearInterval(id);
-      cancelAnimationFrame(first);
-    };
-  }, []);
-
-  const left = now === null ? null : Math.max(0, to - now);
-
-  // Reload only when zero is reached with the page open. A date already past on arrival means the
-  // teaser is being held, and reloading would never end.
-  const wasCounting = useRef(false);
-  useEffect(() => {
-    if (left === null) return;
-    if (left > 0) {
-      wasCounting.current = true;
-      return;
-    }
-    if (!wasCounting.current) return;
-    const id = setTimeout(() => window.location.reload(), 1500);
-    return () => clearTimeout(id);
-  }, [left]);
+  // Reloads at zero so the launched site loads (only if it counted down with the page open)
+  const left = useTimeLeft(to, () => window.location.reload(), 250);
 
   return (
     <div className="mt-7 flex gap-[clamp(0.9rem,3vw,1.75rem)]" role="timer" aria-label="Time until the site opens">

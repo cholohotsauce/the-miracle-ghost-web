@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: "Archive",
   description: "Paintings by The Miracle Ghost.",
   alternates: { canonical: "/archive" },
+  // Not in Aes's menu, and the titles are working titles until he names the pieces: kept out of search results
+  robots: { index: false, follow: true },
 };
 
 export default function ArchivePage() {

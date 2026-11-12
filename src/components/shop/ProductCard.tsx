@@ -9,7 +9,8 @@ import SoldOutStamp from "./SoldOutStamp";
 
 type Props = {
   product: Product;
-  price: string;
+  /** Left out for artwork: Aes sells originals by inquiry, so their price never shows */
+  price?: string;
   edition?: string;
   /** ISO time the product unlocks, when it is still in the future */
   lockedUntil?: string;
@@ -74,7 +75,7 @@ export default function ProductCard({ product, price, edition, lockedUntil, prio
           <h2 className="text-base font-black uppercase tracking-widest [overflow-wrap:anywhere]">{product.title}</h2>
           {edition && <p data-scramble className="mt-0.5 font-mono text-xs uppercase tracking-[0.2em] text-foreground/60">{edition}</p>}
         </div>
-        <p className={`shrink-0 font-mono text-sm ${product.available ? "" : "line-through opacity-50"}`}>{price}</p>
+        {price && <p className={`shrink-0 font-mono text-sm ${product.available ? "" : "line-through opacity-50"}`}>{price}</p>}
       </div>
     </TransitionLink>
   );

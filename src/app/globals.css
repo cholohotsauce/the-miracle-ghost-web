@@ -19,6 +19,7 @@
   /* Accents: use as fills, borders, and glows. They fail contrast as text on white. */
   --color-neon-green: #39ff14; /* Toxic green */
   --color-neon-pink: #ff00ff;  /* Glowing pink */
+  --color-pink-ink: #c000c0;   /* The pink, deep enough to read as small text on white (5:1) */
   --color-neon-teal: #00ffff;  /* Electric teal */
   --color-sleepy-blue: #3b82f6; /* The sleeping ghost's Z's */
   --color-drip-red: #e10b1f; /* Paint running off the Shop title */
@@ -306,23 +307,11 @@ body {
   }
 }
 
-/* The globe's neon teal glow (Round 4). The globe's edge sits at about 89% of the box's half-width,
-   so the light starts just inside it and fades out into the page. 1 soft, 2 neon (default), 3 bloom. */
+/* The globe's neon teal glow (Round 4; the strong "bloom" level, Archie's pick). The globe's edge sits at
+   about 89% of the box's half-width, so the light starts just inside it and fades out into the page. */
 .globe-glow {
   border-radius: 50%;
   pointer-events: none;
-}
-
-.globe-glow-1 {
-  background: radial-gradient(closest-side, transparent 84%, rgb(0 255 255 / 0.32) 89%, transparent 97%);
-}
-
-.globe-glow-2 {
-  background: radial-gradient(closest-side, transparent 83%, rgb(0 255 255 / 0.6) 89%, rgb(0 255 255 / 0.18) 94%, transparent 100%);
-  animation: globe-breathe 4.5s ease-in-out infinite;
-}
-
-.globe-glow-3 {
   inset: -4% !important;
   background: radial-gradient(closest-side, transparent 79%, rgb(0 255 255 / 0.85) 83.5%, rgb(0 255 255 / 0.35) 89%, rgb(0 255 255 / 0.08) 95%, transparent 100%);
   animation: globe-breathe 4.5s ease-in-out infinite;
@@ -334,8 +323,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .globe-glow-2,
-  .globe-glow-3 {
+  .globe-glow {
     animation: none;
   }
 }

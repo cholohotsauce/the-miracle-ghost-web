@@ -113,14 +113,46 @@ function Cam({ video, big, reducedMotion }: { video: CamVideo; big: boolean; red
     return () => window.removeEventListener("keydown", onKey);
   }, [big, player]);
 
+  // Keyboard: while big, focus moves into the screen and Tab stays inside it; it goes back where it was after
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!big) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusables = () =>
+      Array.from(root.current?.querySelectorAll<HTMLElement>("button, [href], input, [tabindex]:not([tabindex='-1'])") ?? []);
+    const t = window.setTimeout(() => (focusables()[0] ?? root.current)?.focus({ preventScroll: true }), 60);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = focusables();
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !root.current?.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+      if (before?.isConnected) before.focus({ preventScroll: true });
+    };
+  }, [big]);
+
   const media = ytId ? yt.mount : file.mount;
   const showCover = !player.playing;
 
   return (
     <motion.div
+      ref={root}
+      tabIndex={-1}
       layout={!reducedMotion}
-      role="dialog"
-      aria-modal={big}
+      role={big ? "dialog" : "region"}
+      aria-modal={big || undefined}
       aria-label={`${video.title}${video.label ? `, ${video.label}` : ""}: video`}
       initial={reducedMotion ? false : { opacity: 0, scale: 0.2, x: "-40vw", y: "40vh" }}
       animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTimeLeft } from "@/lib/useTimeLeft";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -21,20 +21,8 @@ export default function Countdown({
   labelClassName?: string;
 }) {
   const router = useRouter();
-  const target = new Date(to).getTime();
-  const [now, setNow] = useState<number | null>(null);
-
-  useEffect(() => {
-    const tick = () => setNow(Date.now());
-    tick();
-    const id = window.setInterval(tick, 1_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const left = now === null ? null : Math.max(0, target - now);
-  useEffect(() => {
-    if (left === 0) router.refresh();
-  }, [left, router]);
+  // Refreshes at zero so the unlocked product or the next drop shows (only if it counted down with the page open)
+  const left = useTimeLeft(new Date(to).getTime(), () => router.refresh());
 
   const parts =
     left === null

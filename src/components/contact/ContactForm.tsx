@@ -45,7 +45,7 @@ function Step({ n, children }: { n: string; children: ReactNode }) {
 }
 
 function Required() {
-  return <span className="text-[var(--color-neon-pink)]">Required</span>;
+  return <span className="text-[var(--color-pink-ink)]">Required</span>;
 }
 
 function FieldError({ id, text }: { id: string; text?: string }) {
@@ -322,7 +322,7 @@ export default function ContactForm() {
           />
           <span className="flex justify-between gap-4">
             <FieldError id="contact-message-error" text={errors.message} />
-            <span aria-live="polite" className="ml-auto font-mono text-xs tracking-[0.2em] text-foreground/50">
+            <span className="ml-auto font-mono text-xs tracking-[0.2em] text-foreground/60">
               {message.length} / {MAX_CONTACT_MESSAGE}
             </span>
           </span>

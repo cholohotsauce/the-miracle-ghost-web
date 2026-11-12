@@ -63,7 +63,7 @@ export default function WorksGallery({ works, layout }: Props) {
                   />
                   {work.title}
                 </span>
-                <span className="tabular-nums text-foreground/50">{String(i + 1).padStart(2, "0")}</span>
+                <span className="tabular-nums text-foreground/60">{String(i + 1).padStart(2, "0")}</span>
               </div>
             </button>
           </li>
