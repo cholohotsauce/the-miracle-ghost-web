@@ -6,13 +6,26 @@
  *      Then Aes can announce drops with Shopify Email. The token comes from a custom app in
  *      Shopify admin → Settings → Apps → Develop apps, with the read_customers and write_customers scopes.
  *   2. Otherwise, an email to Aes's inbox (see src/lib/mail.ts), one per sign-up.
+ *
+ * Once the sign-up is saved, the fan gets the welcome email (src/emails/welcome.ts). Replies to it go to
+ * Aes's inbox. If the welcome email fails, the sign-up still counts: it's logged, and the fan sees "done".
  */
 
-import { mailAes, mailResponse } from "@/lib/mail";
+import { welcomeEmail } from "@/emails/welcome";
+import { mailAes, mailResponse, sendEmail } from "@/lib/mail";
 import { SHOP_DOMAIN } from "@/lib/shopify";
 import { clean, isEmail, looksLikeBot, rateLimited } from "@/lib/spam";
 
 const ADMIN_API_VERSION = "2025-10";
+
+async function sendWelcome(email: string) {
+  try {
+    const result = await sendEmail({ to: email, ...welcomeEmail(), replyTo: process.env.GHOST_MESSAGE_TO });
+    if (result === "failed" || result === "not_configured") console.error("[early-access] welcome email", result);
+  } catch (err) {
+    console.error("[early-access] welcome email failed", err);
+  }
+}
 
 async function subscribeInShopify(email: string, token: string) {
   const res = await fetch(`https://${SHOP_DOMAIN}/admin/api/${ADMIN_API_VERSION}/graphql.json`, {
@@ -58,6 +71,7 @@ export async function POST(request: Request) {
   if (token) {
     try {
       await subscribeInShopify(email, token);
+      await sendWelcome(email);
       return Response.json({ ok: true });
     } catch (err) {
       // Fall through to email so the sign-up is never lost
@@ -65,10 +79,11 @@ export async function POST(request: Request) {
     }
   }
 
-  return mailResponse(
-    await mailAes({
-      subject: "👻 Early access sign-up",
-      text: `${email} wants to hear about the next drop.\n\nSigned up from: ${from}`,
-    }),
-  );
+  const saved = await mailAes({
+    subject: "👻 Early access sign-up",
+    text: `${email} wants to hear about the next drop.\n\nSigned up from: ${from}`,
+  });
+  // Only welcome people whose sign-up actually reached Aes
+  if (saved === "sent" || saved === "logged") await sendWelcome(email);
+  return mailResponse(saved);
 }
